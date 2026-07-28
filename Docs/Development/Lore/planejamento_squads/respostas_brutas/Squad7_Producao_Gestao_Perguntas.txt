@@ -1,0 +1,111 @@
+SQUAD 7 — PRODUCAO & GESTAO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+(Este squad e o orquestrador em acao - define ritmo, prioridades e o que esta bloqueado.)
+
+Contexto ja travado (Squads 1, 2, 3, 5):
+- Jogo: Babel - roguelite/RPG estilizado, MVP com 10 andares, 1 chefe, 1 classe (Paladino) completa
+- Voce e solo dev, plataforma PC
+- Estado: loop roguelike funcional ponta a ponta, tudo greybox/placeholder (falta arte final, rigs animados, balanceamento)
+- Orquestrador (fases): 0-Direcao [OK] -> 1-Pre-producao/Vertical Slice -> 2-Producao -> 3-Polish -> 4-Lancamento
+
+--------------------------------------------------
+
+1. TEMPO DISPONIVEL
+Quanto tempo por semana voce dedica ao projeto? (isso calibra todos os prazos e a ordem de prioridade)
+Ha dias/horarios fixos ou e variavel?
+Resposta:
+
+São variáveis.
+
+em média, deve dar 5h semanais do Gustavo (parte da arte e historia)
+e 10h semanais do Thiago (parte de programação)
+
+--------------------------------------------------
+
+2. PROXIMO MARCO CONCRETO
+Qual e o proximo objetivo palpavel que voce quer atingir? (ex: "1 classe 100% jogavel com arte final", "vertical slice: 1 andar completo bonito", "balancear os 10 andares")
+Resposta:
+
+1 andar completo bonito, com o personagem jogavel.
+
+--------------------------------------------------
+
+3. PRIORIDADES DA FASE ATUAL
+Considerando que o loop ja funciona em greybox, o que e mais urgente pra VOCE agora?
+Ordene ou marque o que importa: arte/assets 3D | animacao/rigs | audio | balanceamento | mais conteudo (classes, salas, bosses) | narrativa/lore no jogo | polish de UI | tutorial | outro
+Resposta:
+
+Arte e assets 3D e mais conteúdo.
+
+--------------------------------------------------
+
+4. O QUE ESTA BLOQUEADO
+O que hoje esta esperando uma decisao ou recurso pra andar? (ex: modelo de mira do combate em aberto, arte travando teste, aprender pipeline X)
+Resposta:
+
+Conseguir dar vazão rapida na criação dos assets 3D.
+Definir a história completa.
+Definir lista de personagens 
+Definir lista de armas 
+Definir itens
+Definir colecionáveis
+
+Ou seja, fazer uma lista do que precisa ter no jogo efetivamente. Em quantidade e o que precisa ser, para pensar a arte e posteriormente criar o asset 3D.
+
+--------------------------------------------------
+
+5. APRENDIZADO vs PRODUCAO
+Voce esta aprendendo varias coisas (modelagem, cenario, fisica de portas, pipeline). O que voce quer que EU te ENSINE em profundidade vs. o que voce so quer que eu resolva/entregue pronto?
+Resposta:
+
+Podemos só resolver e entregar pronto. Se eu quiser entender mais sobre algum tema ou me ensine, puxamos um projeto separado especial.
+Mas para todas as etapas, quero saber o que está sendo feito, o por que está sendo feito, porque essa decisão foi tomada.
+
+Precisa validar sempre qualquer input que vá definir diretamente história, ou gameplay do jogo.
+
+--------------------------------------------------
+
+6. RISCOS / MEDOS
+O que mais te preocupa no projeto? (escopo grande demais, travar em arte, perder motivacao, parte tecnica dificil?)
+Isso me ajuda a proteger seu tempo e sinalizar cedo.
+Resposta:
+
+Escopo grande demais e definitivamente travar na criação das artes e modelos 3D.
+
+--------------------------------------------------
+
+7. DEFINICAO DE "PRONTO" DO MVP
+Como voce sabe que o MVP esta terminado e pronto pra mostrar? (lista de itens minimos - ex: 1 classe com arte, 10 andares balanceados, 1 boss com fases, audio basico, menu?)
+Resposta:
+
+1 Classe completa pronta, conseguir entrar em 1 andar completo da torre. Com aúdio básico de efeitos, não precisa de trilha sonora ainda. Menu pronto.
+
+--------------------------------------------------
+
+8. CHECKPOINTS DE VALIDACAO (suas datas)
+O orquestrador tem 5 checkpoints (V1 pilares, V2 estilo visual, V3 vertical slice, V4 escopo, V5 build de teste).
+V1 ja OK. V2 (estilo visual) - voce aprova formalmente o que travamos no Squad 3? Quer definir alguma data-alvo pros proximos?
+Resposta:
+
+Acho que podemos ver novamente no 07 de agosto.
+
+--------------------------------------------------
+
+9. COMO VOCE QUER TRABALHAR COMIGO
+Prefere sessoes focadas em 1 squad por vez, ou ir resolvendo tarefas tecnicas soltas conforme aparecem?
+Quer que eu mantenha uma lista de tarefas priorizada (backlog) em arquivo?
+Resposta:
+
+Prefiro ir resolvendo tarefas tecnicas soltas.
+A parte de programação vai ficar com um amigo, vou compartilhar os arquivos MD e toda nosssa pasta de trabalho com ele no git, assim conseguiremos em conjunto alterar coisas do projeto e utilizar as definições que fizemos aqui.
+
+Sim, quero que você mantenha uma lista visual para mim do que está sendo feito, o que está em backlog.
+
+Essa mesma visão em uma visão de cronograma.
+
+Utilize o tempo útil de trabalho que eu respondi, para estimar quanto tempo vai levar cada fase.
+
+
+
+
+--------------------------------------------------

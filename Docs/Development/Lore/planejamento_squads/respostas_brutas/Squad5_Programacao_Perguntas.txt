@@ -1,0 +1,82 @@
+SQUAD 5 — PROGRAMACAO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+
+Contexto ja travado (Squad 1 - Direcao):
+- Jogo: Babel - roguelite/RPG na Babilonia, escalar a Torre de Babel
+- Combate action (livre, sem tab-target), refs Hades + Returnal
+- Loop: subir -> lutar -> coletar -> desbloquear habilidades -> chefe -> morrer -> progressao permanente -> cidade (jardins suspensos) -> repetir
+- MVP: 10 andares (geracao procedural, 10 tipos de sala), 1 chefe, 1 classe (espada 2 maos), 1 set de equipamentos, NPCs na cidade, tutorial, talentos/skills
+- Plataforma: PC
+- Engine ja definida: Godot 4.7
+
+--------------------------------------------------
+
+1. ENGINE / FRAMEWORK
+Confirmado Godot 4.7. Linguagem de script: GDScript, C#, ou os dois? Alguma versao/config especifica ja decidida?
+Resposta:
+
+
+--------------------------------------------------
+
+2. SISTEMAS CENTRAIS
+Quais sistemas o jogo precisa no MVP? (ex: movimentacao/dash, combate action com mira, camera, geracao procedural de andares, inventario, progressao/talentos, save entre mortes)
+Resposta:
+
+
+--------------------------------------------------
+
+3. SISTEMA DE COMBATE
+Como funciona na pratica? Ataques leves/pesados, combos, esquiva/dash, bloqueio/parry, dano corpo a corpo vs distancia (Returnal tem os dois - o jogo vai ter?), cooldowns de habilidades?
+Resposta:
+
+
+--------------------------------------------------
+
+4. IA DE INIMIGOS
+Que tipos de comportamento os inimigos tem? (perseguir, patrulhar, grupos coordenados, padroes de chefe com fases?)
+Resposta:
+
+
+--------------------------------------------------
+
+5. GERACAO PROCEDURAL DOS ANDARES
+Como os 10 tipos de sala vao se conectar? Algoritmo em mente (grafo de salas, grid, hand-authored + randomizado)? Ha controle de dificuldade/progressao por andar?
+Resposta:
+
+
+--------------------------------------------------
+
+6. PIPELINE DE ASSETS 3D
+Como os assets do Blender entram na engine? Formato de exportacao (glTF, FBX?), escala/unidades, convencao de pivo, colisao (gerada automatica ou manual)?
+Resposta:
+
+
+--------------------------------------------------
+
+7. SAVE / LOAD E PROGRESSAO PERMANENTE
+Como funciona a progressao permanente entre mortes (mencionada no loop)? O que persiste (talentos, moedas, desbloqueios) e o que reseta a cada run?
+Resposta:
+
+
+--------------------------------------------------
+
+8. MENUS E UI
+Quais telas sao necessarias no MVP? (menu principal, HUD de combate, inventario, arvore de talentos, tela de morte/progressao?)
+Resposta:
+
+
+--------------------------------------------------
+
+9. POSICIONAMENTO DE OBJETOS NA CENA
+Voce mencionou querer aprender isso. Ja tem experiencia com pivos/escala/colisao no Godot, ou comecamos do zero nisso tambem?
+Resposta:
+
+
+--------------------------------------------------
+
+10. ESTADO ATUAL DO PROJETO
+O que ja existe no repositorio `Babel/babel`? (cenas prontas, scripts, prototipo de movimentacao/combate?) Isso ajuda a saber de onde continuar.
+Resposta:
+
+
+--------------------------------------------------

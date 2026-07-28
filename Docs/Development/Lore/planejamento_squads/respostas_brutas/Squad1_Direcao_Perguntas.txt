@@ -1,0 +1,63 @@
+SQUAD 1 — DIRECAO & PRE-PRODUCAO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+
+--------------------------------------------------
+
+1. ELEVATOR PITCH (uma frase: que jogo e esse?)
+Resposta:
+
+
+--------------------------------------------------
+
+2. OS 3 PILARES DO JOGO
+(principios inegociaveis de design — ex: "combate tab-target agil", "escalada vertical roguelike", "narrativa mitica babilonica")
+Pilar 1:
+Pilar 2:
+Pilar 3:
+
+
+--------------------------------------------------
+
+3. FANTASIA CENTRAL
+(o que o jogador SENTE jogando?)
+Resposta:
+
+
+--------------------------------------------------
+
+4. LOOP PRINCIPAL DE GAMEPLAY
+(o ciclo que o jogador repete: explorar -> lutar -> coletar -> melhorar -> subir de novo?)
+Resposta:
+
+
+--------------------------------------------------
+
+5. ESCOPO REALISTA
+(curto/experimental, demo vertical, jogo completo?)
+Resposta:
+
+
+--------------------------------------------------
+
+6. PLATAFORMA ALVO
+(PC, mobile, console, web?)
+Resposta:
+
+
+--------------------------------------------------
+
+7. REFERENCIAS DIRETAS
+(3 jogos que definem o tom — ja sabemos: Ratchet & Clank para o visual, WoW para o combate. Tem mais alguma?)
+Referencia 1:
+Referencia 2:
+Referencia 3:
+
+
+--------------------------------------------------
+
+8. O QUE ESTE JOGO NAO E
+(anti-escopo — o que fica de fora para evitar inchaco)
+Resposta:
+
+
+--------------------------------------------------

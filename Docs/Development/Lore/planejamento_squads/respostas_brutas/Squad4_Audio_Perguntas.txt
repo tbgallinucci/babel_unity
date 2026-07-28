@@ -1,0 +1,102 @@
+SQUAD 4 — AUDIO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+(Neste squad eu atuo como DIRETOR: escrevo briefs e organizo o sistema de som; IA de musica (Suno/Udio) ou compositor executa.)
+
+Contexto ja travado (Squads 1, 2, 3, 5):
+- Jogo: Babel - roguelite/RPG estilizado na Mesopotamia antiga e mistica, escalar a Torre de Babel
+- Tom: SOMBRIO e ENIGMATICO
+- Combate action (modelo de mira ainda em aberto), Esquiva Perfeita com camera lenta, telegraphs
+- Ambientes: torre sombria (sobe -> vira ouro/bronze/lapis) vs. Jardim Suspenso (oasis acolhedor, ja mencionado "musica suave de fundo")
+- Refs: Blasphemous, Ravenswatch, Hades
+- Eventos de jogo JA existentes: ataque, hit, esquiva perfeita, level up, morte, loot, boss, compra no Warden, etc.
+
+
+
+--------------------------------------------------
+
+1. TOM DA TRILHA
+Epico, tenso, ambiente, retro, orquestral, etnico (instrumentos da regiao - lira, oud, percussao)?
+Como a trilha reforca o tom sombrio e enigmatico?
+Resposta:
+
+O tom do jogo é epico. A trilha sonora tem que refletir a sensação do protagonista, de surpresa, admiração, coragem e medo. Ela deve reforçar o suspense que existe no jogo ao mesmo tempo que entoar coragem ao personagem.
+
+--------------------------------------------------
+
+2. TEMAS DISTINTOS
+Quais momentos tem musica propria? (menu/titulo, Jardim Suspenso/hub, exploracao na torre, combate, sala de boss, tela de morte?)
+A trilha muda conforme sobe a torre (eras Nabucodonosor/Assirio/Alexandrino)?
+Resposta:
+
+Menu Título, jardim suspenso, exploração dentro da torre, sala dos bosses, tela de morte, exploração do lado externo, exploração próxima aos rios, menu de pause (pensei em um assovio cantarolado para essa parte).
+
+A trilha sonora deve mudar de acordo com as eras da torre sim.
+
+--------------------------------------------------
+
+3. MUSICA ADAPTATIVA
+A musica reage ao gameplay? (ex: camada de combate entra quando inimigos aparecem, silencio tenso na exploracao, stinger na Esquiva Perfeita?)
+Ou faixas fixas por ambiente (mais simples)?
+Resposta:
+
+Sim.
+
+Quando é feita a esquiva perfeita, ou um combo elevado, deve existir uma mudança da música.
+
+--------------------------------------------------
+
+4. LISTA DE SFX POR EVENTO
+Confirme/ajuste os sons necessarios por evento:
+- Movimento: passos, pulo, dash/esquiva, esquiva perfeita (stinger?)
+- Combate: ataque leve x3 (combo), acerto no inimigo, dano recebido, bloqueio (Paladino), skill/habilidade, critico
+- Inimigo: telegraph (aviso sonoro do ataque?), morte de inimigo, morte de boss
+- Progressao: level up, escolha de skill/talento, loot/coleta, moeda (Seeds)
+- UI: abrir menu, navegar, comprar no Warden, save, erro/negado
+- Ambiente: ver pergunta 5
+Resposta / ajustes:
+
+Movimento: sim para todos, adicionar um arroto ao tomar o item de cerveja que terá no jogo.
+Combate:Sim para todos
+Inimigo:Morte de Inimigo, Morte de Boss, Não deve ter aviso sonoro de ataque
+Progresso: Sim para todos
+UI: sim para todos, adicione som para abrir o mapa
+
+--------------------------------------------------
+
+5. AUDIO AMBIENTE (soundscape)
+O mundo tem som proprio? (vento na torre, tochas/fogo, ecos de pedra, agua no Jardim Suspenso, criaturas ao longe, maquinario da torre de oferendas?)
+Muda por andar/era?
+Resposta:
+
+Sim para todos os exemplos e para mudar por andar/era.
+
+Adicione para barulho de fogueira.
+
+--------------------------------------------------
+
+6. VOZES / NARRACAO
+Precisa de vozes? (narracao na visao da fogueira/intro, grunhidos de esforco do protagonista, vozes de inimigos/bosses, NPCs da cidade falando?)
+Ou linguagem inventada/cuneiforme estilizada (tipo "simlish" mesopotamico)?
+Resposta:
+
+Apenas Linguagem inventada e cuneiforme.
+Podemos adicionar voz, mas em uma lingua que não existe. Não é necessário mas seria legal.
+
+--------------------------------------------------
+
+7. MIXAGEM E PRIORIDADE
+Em combate intenso (Swarm room, muitos inimigos), o que tem prioridade no mix? (telegraphs precisam furar o barulho pra jogador reagir?)
+Resposta:
+
+Prioridade é a esquiva perfeita, dano recebido, acerto no inimigo, combo.
+
+--------------------------------------------------
+
+8. IMPLEMENTACAO NO CODIGO
+Como o audio e disparado hoje / como voce quer disparar? (AudioStreamPlayer por evento, um AudioManager autoload, buses de mixagem no Godot?)
+Ha algo de audio ja implementado no projeto atual?
+Resposta:
+
+Não temos nenhum audio implementado hoje, iniciariamos o projeto de aúdio do 0. Podemos avaliar opções de construção e implementação.
+
+--------------------------------------------------

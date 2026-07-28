@@ -1,0 +1,131 @@
+SQUAD 3 — ARTE & DIRECAO VISUAL
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+(Neste squad eu atuo como DIRETOR: escrevo briefs e busco referencia; seu pipeline de IA / modelagem manual executa.)
+
+Contexto ja travado (Squads 1 e 2):
+- Jogo: Babel - roguelite/RPG na Mesopotamia antiga e mistica, escalar a Torre de Babel
+- Combate action (livre, sem tab-target), refs Ratchet & Clank (visual), Hades, Returnal
+- Setting: mitos, semideuses e criaturas; abertura com visao na fogueira -> outro mundo
+- Protagonista: Fazuk Sins (camponES, descendente de Alexandre o Grande)
+- Mundo: Torre = fonte de oferendas de alma/sangue aos deuses antigos; Jardim Suspenso = oasis divino
+- Tom narrativo: SOMBRIO e ENIGMATICO
+- MVP: 10 andares (10 tipos de sala), 1 chefe, 1 classe (espada 2 maos), NPCs na cidade
+- NAO e: realista (estilo estilizado), mundo aberto
+
+--------------------------------------------------
+
+1. PALETA DE CORES DOMINANTE
+Quais cores definem a identidade visual? (ex: ocres/areia da Mesopotamia + dourado divino + vermelho de sangue/sacrificio?)
+Como a paleta muda entre a cidade (Jardim Suspenso, acolhedor) e a torre (sombria, hostil)?
+Resposta:
+Sim, a paleta visual é exatamente essa. Tenho arquivos MD separando a paleta para algumas partes da torre, voltadas para Nabuco, período Assírio e Alexandrino.
+
+O Jardim Suspenso deve ser dourado, verde e azul. Com uma ambientação acolhedora, como um oasis de descanso.
+A torre deve ser sombria em misteriosa, sem poder ver o fim dela, se misturando nas nuvens.
+
+--------------------------------------------------
+
+2. ESTILO DE RENDERIZACAO
+Realista, estilizado, cel-shaded, low-poly, pintado a mao?
+(Direcao ja disse NAO realista - qual estilizacao exatamente? Referencia visual de algum jogo/arte?)
+Resposta:
+
+Podemos trabalhar com um estilizado, utilize como referência visual:
+1) Blasphemous
+2) Ravenswatch
+3) Hades
+--------------------------------------------------
+
+3. MATERIAIS-CHAVE (linguagem de material)
+Quais materiais se repetem e definem o mundo? (ex: pedra/tijolo babilonico, ouro, bronze, lapis-lazuli azul, sangue, vitral, tecido...)
+Resposta:
+
+Pedras e tijolos babilônicos, ouro e bronze para os andares mais altos da torre e lapis-lazuli azul para andares. 
+Vitrais devem ser utilizados em salas de boss. Tecidos off-white sujos.
+
+As paredes devem ser de tijolos simples
+As casas e muros fora da torre devem ser de barro com pedras
+o chão deve ter caminhos de terra batida com grama baixa ao redor,
+Adicionar campos de cevada e trigo e arvores de tâmaras, que são muito comuns na região e devem estar contidas dentro do jogo.
+
+Uma das ideias é adicionar as tamaras como um item do jogo.
+--------------------------------------------------
+
+4. PROPORCAO / SILHUETA
+Guia de proporcao dos personagens (protagonista, NPCs, inimigos, chefes). Realista, heroico/exagerado, estilizado-cabecudo?
+Como um inimigo deve "ler" a silhueta a distancia (para o combate action funcionar)?
+Resposta:
+
+Deve ser heroico, os NPCs e objetos devem ser realistas e proporcionais ao protagonista.
+Quanto aos Boss, eles podem ser ligeiramente maiores que o protagonista, mas como uma característica pessoal deles e não uma regra para todos.
+--------------------------------------------------
+
+5. LINGUAGEM VISUAL DO AMBIENTE
+Como cada tipo de sala/andar da torre deve "ler" a primeira vista? Como transmitir progressao de perigo conforme sobe?
+Como o Jardim Suspenso contrasta visualmente com o interior da torre?
+Resposta:
+
+A primeira vista deve ser sombrio e misterioso, sem indicações claras de progressão ou conteúdo daquele ambiente. Não deve ser escuro, mas não deve ser claro a ponto de dar visibilidade total de horizonte para o protagonista, a parte exploratória é core do jogo e deve ser mantida.
+A progressão de perigo conforme sobe, será transmitida pela mudança do ambiente , dos NPCs e pela dificuldade do jogo. O salão deixará de ser tão escuro e passará a ser de ouro, bronze, lapis-lazuli, etc... 
+O Jardim Suspenso contrasta visualmente pq esse sim vai fornecer visibilidade total, com música suave de fundo, ambiente sem perigo, Pilares brancos e adornados, ouro e bronze, lapis-lazuli, artes expostas, esculturas.
+
+--------------------------------------------------
+
+6. REFERENCIAS DE TEXTURA POR CATEGORIA
+Que texturas voce quer por categoria: pedra/alvenaria, metal/ouro, organico (criaturas), energia/luz divina?
+(isso vira lista de busca no PolyHaven + brief pro pipeline)
+Resposta:
+Sim, além dessas que você mencionou:
+1) Sangue
+2) Lapis-Lazuli
+3) bronze
+4) Madeira
+5) Barro
+6) Grama
+7) Agua (poça e rio)
+8) Couro
+9) Fogo
+10)Pelagem animal
+
+--------------------------------------------------
+
+7. ASSETS: PIPELINE DE IA vs MODELAGEM MANUAL
+O que voce quer gerar via pipeline de imagem->3D e o que quer modelar A MAO no Blender (para aprender)?
+Ex: personagens/inimigos via pipeline; cenario/props modelados a mao?
+Resposta:
+
+Quero deixar o máximo possível via pipeline de imagem-3D
+--------------------------------------------------
+
+8. FLUXO DE VALIDACAO DE ASSET
+Como voce aprova um modelo/textura antes de entrar no jogo? (checklist de escala, pivo, estilo, performance?)
+Resposta:
+
+Checklist de Escala
+Formato
+Pivo
+Estilo e Cores
+Performance e Articulação
+
+--------------------------------------------------
+
+9. IDENTIDADE VISUAL DO PROTAGONISTA
+Como Fazuk Sins aparenta? (camponES humilde no inicio - o visual evolui conforme equipa itens/sobe a torre?)
+Resposta:
+
+Fazuk Sins aparenta um humano normal de cabelos cacheados loiro acobreado, forte e musculoso.
+
+O visual evolui conforme equipa itens, como capacetes e armaduras. Mas o base mantem sempre o mesmo.
+
+--------------------------------------------------
+
+10. UI / HUD - DIRECAO VISUAL
+Estilo da interface: diegetico (integrado ao mundo, tabuas de argila/simbolos cuneiformes?) ou UI limpa moderna?
+Resposta:
+
+Será híbrido. Como o propósito do jogo é ter uma dificuldade alta, a ideia seria:
+
+A parte básica, de VIDA ,uso de recursos rápidos, alteração entre armamento e etc, sendo uma UI limpa e moderna
+A parte de mapa, upgrade de armas e atributos do personagem, puzzles e itens, devem ser diegetico
+
+--------------------------------------------------

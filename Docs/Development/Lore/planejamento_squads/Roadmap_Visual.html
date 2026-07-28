@@ -1,0 +1,340 @@
+<title>Babel — Roadmap & Backlog</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --gold:#c9a24a; --gold-dim:#a9863a;
+    --lapis:#4a76c4; --lapis-dim:#3a5fa0;
+    --blood:#b23a2a; --copper:#c07a3c; --stone:#9a8f74;
+    --done:#a98a3f;
+    /* dark ground = night in the tower */
+    --bg:#161009; --panel:#20180e; --panel-2:#271d10;
+    --ink:#efe3c9; --ink-soft:#c9bda1; --ink-faint:#8f846b;
+    --line:#3a2e1b; --line-soft:#2c2213;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.45);
+    --seal:#1a130a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --gold:#9c7822; --gold-dim:#b79a4e;
+      --lapis:#33579c; --lapis-dim:#4a70b0;
+      --blood:#9a2e20; --copper:#a5622a; --stone:#8a7f63;
+      --done:#8a6d24;
+      --bg:#e6dcc4; --panel:#f1e9d6; --panel-2:#e9dfc6;
+      --ink:#2b2113; --ink-soft:#54472f; --ink-faint:#8a7c5f;
+      --line:#d3c5a4; --line-soft:#dccdac;
+      --shadow:0 1px 0 rgba(255,255,255,.5), 0 8px 22px rgba(90,70,30,.14);
+      --seal:#efe7d2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --gold:#c9a24a; --gold-dim:#a9863a; --lapis:#4a76c4; --lapis-dim:#3a5fa0;
+    --blood:#b23a2a; --copper:#c07a3c; --stone:#9a8f74; --done:#a98a3f;
+    --bg:#161009; --panel:#20180e; --panel-2:#271d10;
+    --ink:#efe3c9; --ink-soft:#c9bda1; --ink-faint:#8f846b;
+    --line:#3a2e1b; --line-soft:#2c2213;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.45); --seal:#1a130a;
+  }
+  :root[data-theme="light"] {
+    --gold:#9c7822; --gold-dim:#b79a4e; --lapis:#33579c; --lapis-dim:#4a70b0;
+    --blood:#9a2e20; --copper:#a5622a; --stone:#8a7f63; --done:#8a6d24;
+    --bg:#e6dcc4; --panel:#f1e9d6; --panel-2:#e9dfc6;
+    --ink:#2b2113; --ink-soft:#54472f; --ink-faint:#8a7c5f;
+    --line:#d3c5a4; --line-soft:#dccdac;
+    --shadow:0 1px 0 rgba(255,255,255,.5), 0 8px 22px rgba(90,70,30,.14); --seal:#efe7d2;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:clamp(20px,4vw,44px) clamp(16px,3vw,32px) 56px; }
+
+  h1,h2,h3 { font-family:"Cambria","Georgia","Times New Roman",serif; font-weight:600; }
+  .eyebrow { font-size:.68rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+  .mono { font-family:"Consolas",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+
+  /* header */
+  header.top {
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    background:
+      linear-gradient(180deg, var(--panel-2), var(--panel));
+    box-shadow:var(--shadow);
+  }
+  .brickband {
+    height:10px;
+    background:
+      repeating-linear-gradient(90deg, var(--gold-dim) 0 26px, transparent 26px 30px),
+      repeating-linear-gradient(90deg, transparent 0 13px, var(--gold-dim) 13px 15px);
+    opacity:.5;
+  }
+  .top-inner { padding:clamp(18px,3vw,30px); display:flex; flex-wrap:wrap; gap:22px; align-items:flex-end; justify-content:space-between; }
+  h1 { margin:.1em 0 0; font-size:clamp(2.3rem,7vw,3.8rem); letter-spacing:.04em; color:var(--gold);
+       text-wrap:balance; line-height:.95; }
+  .sub { color:var(--ink-soft); margin-top:.5em; max-width:46ch; font-size:.98rem; }
+  .theme-toggle {
+    font:inherit; font-size:.8rem; color:var(--ink-soft); background:transparent;
+    border:1px solid var(--line); border-radius:999px; padding:.4em .9em; cursor:pointer;
+  }
+  .theme-toggle:hover { border-color:var(--gold); color:var(--gold); }
+  .theme-toggle:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+
+  /* status strip */
+  .strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+           background:var(--line); border-top:1px solid var(--line); }
+  .cell { background:var(--panel); padding:14px 16px; }
+  .cell .k { font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); }
+  .cell .v { font-family:"Cambria","Georgia",serif; font-size:1.02rem; margin-top:3px; color:var(--ink); }
+  .cell .v b { color:var(--gold); font-weight:600; }
+
+  /* insight callout */
+  .insight {
+    margin:26px 0 34px; display:flex; gap:16px; align-items:flex-start;
+    border:1px solid var(--line); border-left:4px solid var(--blood);
+    background:var(--panel); border-radius:10px; padding:16px 20px; box-shadow:var(--shadow);
+  }
+  .insight .glyph { font-size:1.5rem; line-height:1; margin-top:2px; }
+  .insight h3 { margin:0 0 4px; font-size:1.05rem; color:var(--ink); }
+  .insight p { margin:0; color:var(--ink-soft); font-size:.94rem; }
+
+  section { margin-top:40px; }
+  .sec-head { display:flex; align-items:baseline; gap:14px; margin-bottom:18px; }
+  .sec-head h2 { margin:0; font-size:1.5rem; color:var(--ink); }
+  .sec-head .rule { flex:1; height:1px; background:linear-gradient(90deg,var(--gold-dim),transparent); opacity:.6; }
+
+  /* kanban */
+  .board { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media (max-width:820px){ .board { grid-template-columns:1fr; } }
+  .col { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .col > .col-head { display:flex; align-items:center; gap:8px; margin:2px 2px 12px; }
+  .col-head .dot { width:9px; height:9px; border-radius:50%; }
+  .col-head h3 { margin:0; font-size:1rem; letter-spacing:.02em; }
+  .col-head .count { margin-left:auto; font-size:.72rem; color:var(--ink-faint); }
+  .col.done  .dot{ background:var(--done); }
+  .col.prog  .dot{ background:var(--lapis); }
+  .col.back  .dot{ background:var(--stone); }
+
+  .card {
+    position:relative; background:var(--panel-2); border:1px solid var(--line-soft);
+    border-radius:9px; padding:11px 12px 11px 15px; margin-bottom:9px; box-shadow:0 1px 2px rgba(0,0,0,.12);
+  }
+  .card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+    border-radius:9px 0 0 9px; background:var(--area,var(--stone)); }
+  .card.arte    { --area:var(--gold); }
+  .card.prog    { --area:var(--lapis); }
+  .card.audio   { --area:var(--copper); }
+  .card.direcao { --area:var(--stone); }
+  .card p { margin:0; font-size:.9rem; color:var(--ink); }
+  .card .meta { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .tag { font-size:.63rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+         padding:.2em .55em; border-radius:5px; border:1px solid var(--line);
+         color:var(--area,var(--stone)); }
+  .owner { font-size:.72rem; color:var(--ink-faint); }
+  .est { margin-left:auto; font-size:.74rem; color:var(--ink-soft);
+         font-family:"Consolas",ui-monospace,monospace; }
+  .flag { font-size:.63rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+          color:#fff; background:var(--blood); padding:.2em .5em; border-radius:5px; }
+  .card.done-item p { color:var(--ink-soft); }
+  .card.done-item::before { opacity:.55; }
+
+  /* timeline */
+  .gantt { border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:18px; box-shadow:var(--shadow); overflow-x:auto; }
+  .gantt-inner { min-width:640px; }
+  .axis { display:grid; grid-template-columns:170px 1fr; align-items:center; gap:0 14px; margin-bottom:6px; }
+  .axis .months { display:grid; grid-template-columns:repeat(6,1fr); font-size:.68rem; color:var(--ink-faint);
+                  border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .axis .months span { text-align:left; letter-spacing:.04em; }
+  .row { display:grid; grid-template-columns:170px 1fr; align-items:center; gap:0 14px; padding:9px 0;
+         border-bottom:1px solid var(--line-soft); }
+  .row:last-child { border-bottom:none; }
+  .phase { display:flex; align-items:center; gap:10px; }
+  .seal { width:26px; height:26px; flex:none; border-radius:50%; display:grid; place-items:center;
+          font-family:"Cambria","Georgia",serif; font-size:.86rem; font-weight:700;
+          background:var(--seal); border:1.5px solid var(--gold-dim); color:var(--gold); }
+  .phase .nm { font-family:"Cambria","Georgia",serif; font-size:.96rem; color:var(--ink); }
+  .phase .nm small { display:block; font-family:"Segoe UI",system-ui,sans-serif; font-size:.7rem; color:var(--ink-faint); letter-spacing:.02em; }
+  .track { position:relative; height:26px; }
+  .track::before { content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px calc(100%/6)); opacity:.7; }
+  .bar { position:absolute; top:4px; height:18px; border-radius:5px; display:flex; align-items:center;
+         padding:0 8px; font-size:.68rem; color:#000; white-space:nowrap; overflow:hidden;
+         transform-origin:left center; }
+  .bar.b0 { background:linear-gradient(180deg,var(--done),var(--gold-dim)); }
+  .bar.b1 { background:linear-gradient(180deg,#e0b24f,var(--gold)); box-shadow:0 0 0 1px var(--gold), 0 0 14px -2px var(--gold); color:#1b1305; font-weight:700; }
+  .bar.b2 { background:linear-gradient(180deg,var(--lapis),var(--lapis-dim)); color:#fff; }
+  .bar.b3 { background:linear-gradient(180deg,var(--copper),#8f5a2c); color:#fff; }
+  .bar.b4 { background:linear-gradient(180deg,var(--blood),#7f2a1f); color:#fff; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px 20px; margin-top:16px; font-size:.76rem; color:var(--ink-soft); }
+  .legend span { display:inline-flex; align-items:center; gap:7px; }
+  .legend i { width:16px; height:10px; border-radius:3px; display:inline-block; }
+  .note { margin-top:14px; font-size:.82rem; color:var(--ink-faint); border-top:1px dashed var(--line); padding-top:12px; }
+  .note b { color:var(--gold); font-weight:600; }
+
+  footer { margin-top:44px; padding-top:18px; border-top:1px solid var(--line);
+           display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:space-between; font-size:.78rem; color:var(--ink-faint); }
+  footer b { color:var(--ink-soft); font-weight:600; }
+
+  @media (prefers-reduced-motion:no-preference){
+    .bar { animation:grow .7s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes grow { from { transform:scaleX(0); opacity:0; } to { transform:scaleX(1); opacity:1; } }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brickband"></div>
+    <div class="top-inner">
+      <div>
+        <div class="eyebrow">Roadmap &amp; Backlog · Roguelite</div>
+        <h1>BABEL</h1>
+        <p class="sub">A escalada da Torre, do greybox ao vertical slice — quadro de trabalho e cronograma da equipe.</p>
+      </div>
+      <button class="theme-toggle" id="tt" aria-label="Alternar tema">◐ Tema</button>
+    </div>
+    <div class="strip">
+      <div class="cell"><div class="k">Alvo atual</div><div class="v"><b>Vertical Slice</b></div></div>
+      <div class="cell"><div class="k">Gustavo · Arte + História</div><div class="v">~5&nbsp;h<span style="color:var(--ink-faint)">/sem</span></div></div>
+      <div class="cell"><div class="k">Thiago · Programação</div><div class="v">~10&nbsp;h<span style="color:var(--ink-faint)">/sem</span></div></div>
+      <div class="cell"><div class="k">Próx. checkpoint · V2</div><div class="v">07&nbsp;ago&nbsp;2026</div></div>
+    </div>
+  </header>
+
+  <div class="insight">
+    <div class="glyph">⏳</div>
+    <div>
+      <h3>O caminho crítico é a arte, não o código.</h3>
+      <p>A base de programação já roda em greybox e o Thiago fecha o slice em ~5 semanas. Os ~46–64&nbsp;h de arte a 5&nbsp;h/sem levam <b style="color:var(--ink)">~10–12 semanas</b> — o vertical slice sai no ritmo da arte. Enxugar props do andar 1 e gerar assets em lote é o que mais acelera.</p>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head"><h2>Quadro</h2><div class="rule"></div></div>
+    <div class="board">
+
+      <div class="col done">
+        <div class="col-head"><span class="dot"></span><h3>Feito</h3><span class="count">greybox · 10</span></div>
+        <div class="card prog done-item"><p>Loop roguelike ponta a ponta (título → hub → run → andares → morte)</p></div>
+        <div class="card prog done-item"><p>FloorAssembler procedural seedado — 6 tipos de sala + Swarm</p></div>
+        <div class="card prog done-item"><p>Combate: combo 3 hits, esquiva + Esquiva Perfeita, bloqueio</p></div>
+        <div class="card prog done-item"><p>6 classes trocáveis <em>(só Paladino completo)</em></p></div>
+        <div class="card prog done-item"><p>Progressão por-run: level up 3-escolhas, 15 Soul Talents, árvore radial</p></div>
+        <div class="card prog done-item"><p>Meta-progressão: Seeds, Warden, 10 unlocks</p></div>
+        <div class="card prog done-item"><p>Save/load 5 slots + MetaProgress</p></div>
+        <div class="card prog done-item"><p>Todas as telas de UI do MVP (greybox)</p></div>
+        <div class="card prog done-item"><p>IA de inimigos: EnemyBase — estados, navmesh, telegraphs</p></div>
+        <div class="card direcao done-item"><p>GDD completo — 7 squads + log de decisões</p></div>
+      </div>
+
+      <div class="col prog">
+        <div class="col-head"><span class="dot"></span><h3>Em andamento</h3><span class="count">slice · 13</span></div>
+        <div class="card direcao">
+          <p><strong>Lista mestra de conteúdo</strong> — história, personagens, armas, itens, colecionáveis</p>
+          <div class="meta"><span class="flag">Bloqueia arte</span><span class="owner">Claude + Gustavo</span><span class="est">~1 sem</span></div>
+        </div>
+        <div class="card arte"><p>Protagonista Fazuk Sins: modelo + rig + anims (Mixamo)</p>
+          <div class="meta"><span class="tag">Arte</span><span class="owner">Gustavo</span><span class="est">10–14h</span></div></div>
+        <div class="card arte"><p>Inimigos do andar 1 (2–3): modelo + rig + anims</p>
+          <div class="meta"><span class="tag">Arte</span><span class="owner">Gustavo</span><span class="est">10–14h</span></div></div>
+        <div class="card arte"><p>Kit de ambiente do andar 1: shells + props + texturas</p>
+          <div class="meta"><span class="tag">Arte</span><span class="owner">Gustavo</span><span class="est">16–22h</span></div></div>
+        <div class="card arte"><p>Skin da UI (híbrido: limpo + diegético)</p>
+          <div class="meta"><span class="tag">Arte</span><span class="owner">Gustavo</span><span class="est">6–8h</span></div></div>
+        <div class="card arte"><p>Ícones da árvore de talentos (15)</p>
+          <div class="meta"><span class="tag">Arte</span><span class="owner">Gustavo</span><span class="est">4–6h</span></div></div>
+        <div class="card prog"><p>Física de colisão para abrir portas</p>
+          <div class="meta"><span class="tag">Prog</span><span class="owner">Thiago</span><span class="est">~4h</span></div></div>
+        <div class="card prog"><p>Sistema de áudio do zero (AudioManager + buses + SFX)</p>
+          <div class="meta"><span class="tag">Prog</span><span class="owner">Thiago</span><span class="est">~10h</span></div></div>
+        <div class="card prog"><p>Telemetria/logs (morte, tempos, dano, itens, XP, Seeds…)</p>
+          <div class="meta"><span class="tag">Prog</span><span class="owner">Thiago</span><span class="est">~6h</span></div></div>
+        <div class="card prog"><p>Integração de assets + máquina de animação (herói + inimigos)</p>
+          <div class="meta"><span class="tag">Prog</span><span class="owner">Thiago</span><span class="est">12–16h</span></div></div>
+        <div class="card prog"><p>Passe de balanceamento do andar (alvo: morrer no andar 2 na 1ª run)</p>
+          <div class="meta"><span class="tag">Prog · QA</span><span class="owner">Thiago</span><span class="est">~6h</span></div></div>
+        <div class="card prog"><p>Polish do Paladino + bugfix do slice</p>
+          <div class="meta"><span class="tag">Prog</span><span class="owner">Thiago</span><span class="est">~8h</span></div></div>
+        <div class="card audio"><p>Pacote de SFX básico (brief + execução Suno/biblioteca)</p>
+          <div class="meta"><span class="tag">Áudio</span><span class="owner">Claude → exec</span><span class="est">~1 sem</span></div></div>
+      </div>
+
+      <div class="col back">
+        <div class="col-head"><span class="dot"></span><h3>Backlog</h3><span class="count">fase 2+ · 13</span></div>
+        <div class="card prog"><p>Completar as outras 5 classes (skills + morphs)</p></div>
+        <div class="card arte"><p>Conteúdo dos 10 andares + boss com fases</p></div>
+        <div class="card direcao"><p>Boss "Alexandre" (penúltimo) + "boss real"</p></div>
+        <div class="card audio"><p>Trilha sonora completa (adaptativa, por era da torre)</p></div>
+        <div class="card prog"><p>Sala de loja + encontros de boss a cada 10 andares</p></div>
+        <div class="card direcao"><p>Planilha de balanceamento (após definir bosses + armas)</p></div>
+        <div class="card prog"><p>Grupos coordenados de inimigos</p></div>
+        <div class="card direcao"><p>Lore no jogo (item lore + environmental storytelling)</p></div>
+        <div class="card prog"><p>Reconstruir tutorial (o antigo quebrado foi deletado)</p></div>
+        <div class="card prog"><p>Equipamento sobreviver à morte + mais unlocks no Warden</p></div>
+        <div class="card direcao"><p><strong>Decisão aberta:</strong> mira/alvo — Tab-target vs. mira livre</p>
+          <div class="meta"><span class="flag" style="background:var(--stone);color:#1b1305">A decidir</span></div></div>
+        <div class="card prog"><p>Lista de bugs conhecidos (QA — a preencher)</p></div>
+        <div class="card prog"><p>Checklist de teste por build (Claude propõe inicial)</p></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Cronograma</h2><div class="rule"></div></div>
+    <div class="gantt">
+      <div class="gantt-inner">
+        <div class="axis">
+          <div></div>
+          <div class="months">
+            <span>Jul&nbsp;’26</span><span>Out&nbsp;’26</span><span>Jan&nbsp;’27</span><span>Abr&nbsp;’27</span><span>Jul&nbsp;’27</span><span>Out&nbsp;’27</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="phase"><span class="seal">0</span><span class="nm">Direção<small>GDD + decisões</small></span></div>
+          <div class="track"><div class="bar b0" style="left:0%;width:6%">✓</div></div>
+        </div>
+        <div class="row">
+          <div class="phase"><span class="seal">1</span><span class="nm">Vertical Slice<small>1 andar bonito + Paladino</small></span></div>
+          <div class="track"><div class="bar b1" style="left:6%;width:16%">~10–12 sem · arte-bound</div></div>
+        </div>
+        <div class="row">
+          <div class="phase"><span class="seal">2</span><span class="nm">Produção<small>10 andares · 5 classes · bosses</small></span></div>
+          <div class="track"><div class="bar b2" style="left:22%;width:44%">~6–9 meses · a refinar</div></div>
+        </div>
+        <div class="row">
+          <div class="phase"><span class="seal">3</span><span class="nm">Polish<small>balancear · estabilizar</small></span></div>
+          <div class="track"><div class="bar b3" style="left:66%;width:18%">~2–3 meses</div></div>
+        </div>
+        <div class="row">
+          <div class="phase"><span class="seal">4</span><span class="nm">Lançamento<small>build final · publicar</small></span></div>
+          <div class="track"><div class="bar b4" style="left:84%;width:10%">~2–4 sem</div></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--gold)"></i>Fase atual</span>
+        <span><i style="background:var(--lapis)"></i>Produção</span>
+        <span><i style="background:var(--copper)"></i>Polish</span>
+        <span><i style="background:var(--blood)"></i>Lançamento</span>
+      </div>
+      <p class="note"><b>Base:</b> arte 5&nbsp;h/sem e programação 10&nbsp;h/sem em paralelo, a partir de 24/07/2026. As Fases 2–4 são bandas amplas — <b>reestimar após o slice</b>, no checkpoint de escopo (V4). A Fase 3 segue a regra do orquestrador de reservar ~30% do tempo total para polish.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Fonte: <b>.work/Roadmap_Backlog.md</b> · GDD: <b>.work/GDD_e_Orquestrador.md</b></span>
+    <span>Atualizado <b>24/07/2026</b> · documento vivo</span>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    var btn=document.getElementById('tt');
+    btn.addEventListener('click',function(){
+      var cur=document.documentElement.getAttribute('data-theme');
+      if(!cur){ cur=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }
+      document.documentElement.setAttribute('data-theme', cur==='dark'?'light':'dark');
+    });
+  })();
+</script>

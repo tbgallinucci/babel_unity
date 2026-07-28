@@ -1,0 +1,61 @@
+SQUAD 2 — NARRATIVA & ROTEIRO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+
+Contexto ja travado (Squad 1 - Direcao):
+- Jogo: Babel - roguelite/RPG na Babilonia, escalar a Torre de Babel
+- Combate action (livre, sem tab-target), refs Hades + Returnal
+- Loop: subir -> lutar -> coletar -> desbloquear habilidades -> chefe -> morrer -> progressao permanente -> cidade (jardins suspensos) -> repetir
+- MVP: 10 andares, 1 chefe, 1 classe (espada 2 maos)
+- NAO e: mundo aberto, realista, soulslike, puzzle, plataforma, narrativo pesado (cuidado pra nao inflar a narrativa alem do escopo)
+
+--------------------------------------------------
+
+1. HISTORIA / ENREDO
+Existe historia/enredo estruturado, ou o foco e puramente jogabilidade (narrativa minima/ambiental)?
+Resposta:
+
+Existe história e enredo. O jogo se passa na antiga Mesopotâmia, terra cheia de mitos e lendas. O jogo deve começar com o personagem principal tendo visões em uma fogueira, sobre lendas antigas , atrito entre deuses e promessa de uma terra perdida rica em fertilidade , riquezas e prosperidade. Essa terra foi desolado por conflitos, onde todos cobiçam suas riquezas. Ao fim da visão no fogo, o personagem acorda novamente e percebe que o lado de fora da sua casa não é mais o mesmo, está em outro mundo e assim começa o jogo.
+--------------------------------------------------
+
+2. PROTAGONISTA
+Quem e o protagonista? Motivacao, personalidade, arco (se houver).
+Resposta:
+
+Protagonista é o Fazuk Sins, durante o começo do jogo, se imagina ser um camponês que foi incumbido de uma missão sagrada pelos deuses (devido a visão que ele teve). Esse camponês se motiva pela ideia de uma terra rica e cheia de prosperidade, porém na verdade, ele é descendente direto de Alexandre o grande, fato que só é explicado no confronto direto com Alexandre como penúltimo boss da torre.
+--------------------------------------------------
+
+3. MUNDO / LORE
+Qual e o mundo/lore? Por que existe a Torre de Babel neste jogo? Quem a construiu? O que ela representa?
+Resposta:
+O mundo é a Mesopotâmia antiga e mística, repleta de seres mitológicos , semideuses e criaturas. A torre de babel inicialmente vai significar a fonte do mal, ou seja, onde estão os principais vilões que precisam ser derrotados para purificar a região e garantir o equilíbrio. Posteriormente será descoberto que na verdade a torre foi construída para gerar oferendas de alma e sangue para as divindades que controlam aquela região e alimentam seu poder e imortalidade das lutas, cobiças e almas humanas. O jardim suspenso foi uma forma dos humanos zelarem pelas almas ali perdidas, e de representar esse oasis divino em meio ao caos.
+
+--------------------------------------------------
+
+4. ANTAGONISTA
+Ha antagonista ou forca de oposicao central? Quem/o que e?
+Resposta:
+
+Deuses mitológicos antigos que desejam se alimentar de todo caos da Mesopotâmia
+--------------------------------------------------
+
+5. COMO A HISTORIA E CONTADA
+Cutscenes, ambiente (environmental storytelling), dialogos, item lore, NPCs na cidade?
+(lembrando: escopo definido como "nao narrativo pesado" - pensar em formas leves de contar a historia)
+Resposta:
+
+Ambiente, NPCs e itens lore
+--------------------------------------------------
+
+6. TOM NARRATIVO
+Serio, comico, sombrio, aventura leve, epico?
+Resposta:
+
+Sombrio e enigmático
+--------------------------------------------------
+
+7. LORE DOS EQUIPAMENTOS/ARMAS
+A arma inicial (espada de 2 maos) e outros equipamentos tem historia propria? De onde vem, quem forjou, significado?
+Resposta:
+
+Sim, as armas devem ter história própria, alinhadas com a história principal (contando detalhes, histórias antigas e conexões)
+--------------------------------------------------

@@ -1,0 +1,113 @@
+SQUAD 6 — QA & BALANCEAMENTO
+Preencha as respostas abaixo de cada pergunta. Pode deixar em branco o que ainda nao tiver certeza.
+(Neste squad eu analiso dados, sugiro ajustes e monto checklists.)
+
+Contexto ja travado (Squads 1, 2, 3, 5):
+- Jogo: Babel - roguelite/RPG estilizado, escalar a Torre de Babel (10 andares no MVP)
+- Fantasia central: adrenalina, vontade de evoluir a cada segundo, espirito explorador
+- Dificuldade ALTA por design (a UI hibrida foi pensada em torno disso)
+- JA implementado: dificuldade escala por faixa de andar (nº salas, tier/qtd inimigos + multiplicadores globais)
+- PENDENCIA CONHECIDA (Squad 5): "balanceamento de dificuldade por andar sem playtesting a fundo" e "falta refino da curva por andar"
+
+--------------------------------------------------
+
+1. O QUE DEFINE "DIVERTIDO"
+Qual e o criterio que voce testa? Como voce sabe que uma run foi boa?
+(ex: senti progresso, combate fluido, quase morri mas venci, quis jogar de novo?)
+Resposta:
+
+Combate Fluído, itens recebidos com um bom valor, dificuldade alta, aprendizado e melhoria de gameplay, senti progresso, querer jogar novamente.
+
+--------------------------------------------------
+
+2. COMO MEDIR DIFICULDADE
+Que metricas voce quer acompanhar? (tempo pra matar um inimigo, dano por segundo da classe, % de mortes por andar, quantas runs ate vencer, uso de Esquiva Perfeita?)
+Ha alguma "sensacao alvo" - ex: jogador deve morrer em media no andar X na primeira run?
+Resposta:
+
+Dano recebido de cada inimigo vs. dano de ataque (unitário e total dos combates)
+% de mortes por andar 
+Runs até vencer
+Quantidade de esquivas perfeitas
+
+O jogador deve morrer no 2 andar na primeira run
+
+--------------------------------------------------
+
+3. CURVA DE DIFICULDADE POR ANDAR (1 a 10)
+Como voce IMAGINA a curva ideal? (rampa suave? picos nos andares de sala-desafio? spike grande no boss do 10?)
+Onde e aceitavel o jogador morrer x onde seria frustrante?
+Resposta:
+
+Seria aceitável ele morrer em sala de Bosses, em salas desafio ou em salas desafiadoras.
+
+Deve ser uma escada a cada boss.
+
+Dificuldade 1 até o primeiro boss.
+Dificuldade 2 até o segundo boss.
+E assim por diante.
+Boss final, outra dificuldade.
+Boss real, outra ainda mais.
+
+--------------------------------------------------
+
+4. BALANCEAMENTO DE CLASSES
+So o Paladino esta completo. Ele e a baseline de balanceamento? As outras 5 classes devem ficar equivalentes em poder, ou variar (facil/dificil de jogar)?
+Ha algo hoje que sente forte demais / fraco demais? (ex: Esquiva Perfeita, stacks de Retribuicao, dano de skill)
+Resposta:
+
+Devem ficar equivalentes, as classes não devem alterar na dificuldade e devem ter mesmas regras e condições.
+Apenas a gameplay do jogador deve ser um fator de decisão para a escolha da classe.
+
+--------------------------------------------------
+
+5. ECONOMIA E PROGRESSAO
+Os numeros de progressao parecem certos? (XP por inimigo, Seeds por kill, precos no Warden 20/40, drop de equip 100% boss / 1-2% mob, 3 escolhas por level up)
+Algo que voce sente rapido/lento demais na progressao?
+Resposta:
+
+Concordo.
+
+--------------------------------------------------
+
+6. BUGS CONHECIDOS (lista viva)
+Liste bugs que voce ja notou (mesmo pequenos). Vou manter essa lista atualizada durante o projeto.
+Resposta:
+
+--------------------------------------------------
+
+7. CHECKLIST DE TESTE POR BUILD
+O que voce quer verificar antes de considerar uma build "ok"? (ex: completar uma run inteira, testar cada tipo de sala, save/load funciona, cada classe abre sem crash?)
+Me ajude a montar esse checklist - posso propor um inicial se preferir.
+Resposta:
+
+
+
+--------------------------------------------------
+
+8. PLANILHA DE BALANCEAMENTO
+Existe alguma planilha/CSV de armas, inimigos ou stats que eu possa analisar? (voce mencionou items.csv e Resources .tres)
+Quer que eu ajude a montar uma planilha de balanceamento centralizada?
+Resposta:
+
+Após definirmos todos os boss e armas, vamos definir suas especificações.
+Vamos precisar de ajuda para isso.
+
+--------------------------------------------------
+
+9. TELEMETRIA / LOGS
+Voce quer instrumentar o jogo pra coletar dados automaticamente durante o playtest? (ex: logar andar da morte, tempo por sala, dano tomado) Ou balanceamento na base do "senti que"?
+Resposta:
+
+Sim:
+Andar da morte,
+tempo por run,
+Tempo por sala,
+Dano tomado,
+Dano concedido,
+Quantidade de itens recebido,
+Quantidade de XP,
+Quantidade de seeds,
+Quantidade de equipamentos
+
+--------------------------------------------------
