@@ -65,7 +65,7 @@ ModelImporter:
       takeName: mixamo.com
       internalID: 4061839508520268033
       firstFrame: 40
-      lastFrame: 70
+      lastFrame: 65
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -93,7 +93,7 @@ ModelImporter:
       name: Attack3
       takeName: mixamo.com
       internalID: -2061910772549006292
-      firstFrame: 70
+      firstFrame: 55
       lastFrame: 106
       wrapMode: 0
       orientationOffsetY: 0

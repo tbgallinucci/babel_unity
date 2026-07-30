@@ -52,6 +52,13 @@ namespace Babel.Equipment
         // corrida (senão o trigger pode disparar sem ter transição pra
         // consumir bem nesse instante).
         [SerializeField] private string armedJumpGripStateName = "ArmedJumpGrip";
+        // Mesmo racional do Jump/ArmedJumpGrip acima, aplicado ao Dodge —
+        // sem esse bloqueio, dava pra sacar/guardar a arma no meio do roll,
+        // o que também explica travamentos: o trigger Draw/Sheath dispara,
+        // currentState já muda, mas não tem transição de ArmedDodgeGrip pra
+        // GreatSwordDraw/Sheath pra consumir esse trigger.
+        [SerializeField] private string dodgingTag = "Dodging";
+        [SerializeField] private string armedDodgeGripStateName = "ArmedDodgeGrip";
         // Draw/Sheath tocam numa layer mascarada (só tronco/braços) pra deixar a
         // Locomotion da layer base livre — assim o personagem continua andando
         // normalmente enquanto saca/guarda. Ver a seção "Mover durante Draw/Sheath"
@@ -79,6 +86,7 @@ namespace Babel.Equipment
         private int isWieldedHash;
         private bool pendingDrawReset;
         private bool pendingSheathReset;
+        private bool pendingToggle;
 
         public WeaponState CurrentState => currentState;
         public bool IsWielded => currentState == WeaponState.Wielded;
@@ -163,12 +171,25 @@ namespace Babel.Equipment
             }
         }
 
+        // WasPressedThisFrame() é um pulso de um frame só — sem enfileirar,
+        // um aperto que caísse bem no meio de IsAttacking()/IsJumping()/
+        // IsDodging()/IsTransitioning era descartado pra sempre (nada
+        // reexecuta o toggle depois que o bloqueio termina). pendingToggle
+        // guarda a intenção e aplica assim que todos os bloqueios liberarem,
+        // não importa quantos frames isso demore.
         private void HandleToggleInput()
         {
-            if (!equipAction.WasPressedThisFrame() || IsTransitioning || IsAttacking() || IsJumping())
+            if (equipAction.WasPressedThisFrame())
+            {
+                pendingToggle = true;
+            }
+
+            if (!pendingToggle || IsTransitioning || IsAttacking() || IsJumping() || IsDodging())
             {
                 return;
             }
+
+            pendingToggle = false;
 
             if (currentState == WeaponState.Sheathed)
             {
@@ -185,7 +206,7 @@ namespace Babel.Equipment
         // depender do input de Equip.
         public void RequestDraw()
         {
-            if (currentState != WeaponState.Sheathed || IsJumping())
+            if (currentState != WeaponState.Sheathed || IsJumping() || IsDodging())
             {
                 return;
             }
@@ -196,8 +217,15 @@ namespace Babel.Equipment
         private bool IsJumping()
         {
             bool baseLayerJumping = LayerHasTagNowOrIncoming(0, jumpingTag);
-            bool upperBodyStillGripping = animator.GetCurrentAnimatorStateInfo(weaponLayerIndex).IsName(armedJumpGripStateName);
+            bool upperBodyStillGripping = LayerHasStateNowOrIncoming(weaponLayerIndex, armedJumpGripStateName);
             return baseLayerJumping || upperBodyStillGripping;
+        }
+
+        private bool IsDodging()
+        {
+            bool baseLayerDodging = LayerHasTagNowOrIncoming(0, dodgingTag);
+            bool upperBodyStillGripping = LayerHasStateNowOrIncoming(weaponLayerIndex, armedDodgeGripStateName);
+            return baseLayerDodging || upperBodyStillGripping;
         }
 
         // GetCurrentAnimatorStateInfo só reflete o estado de ORIGEM enquanto uma
@@ -214,6 +242,24 @@ namespace Babel.Equipment
             }
 
             return animator.IsInTransition(layerIndex) && animator.GetNextAnimatorStateInfo(layerIndex).IsTag(tag);
+        }
+
+        // Mesma pegadinha do método acima, só que checando por NOME de
+        // estado em vez de tag — upperBodyStillGripping (IsJumping()/
+        // IsDodging()) usava só GetCurrentAnimatorStateInfo direto, sem essa
+        // proteção, então durante o crossfade de ENTRADA em ArmedJumpGrip/
+        // ArmedDodgeGrip (Empty/ArmedSprintGrip -> grip) ele reportava false
+        // por um instante mesmo já a caminho — janela onde Draw/Sheath podia
+        // escapar e a UpperBody não terminar de vestir a pose certa (arma
+        // "solta" durante o roll, por exemplo).
+        private bool LayerHasStateNowOrIncoming(int layerIndex, string stateName)
+        {
+            if (animator.GetCurrentAnimatorStateInfo(layerIndex).IsName(stateName))
+            {
+                return true;
+            }
+
+            return animator.IsInTransition(layerIndex) && animator.GetNextAnimatorStateInfo(layerIndex).IsName(stateName);
         }
 
         private void TriggerDraw()
