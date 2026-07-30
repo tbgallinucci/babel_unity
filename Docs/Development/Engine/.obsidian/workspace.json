@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Planning/Guide - Dodge, Strong Attack, Lock-on e Habilidades.md",
+                "file": "Planning/Guide - Vida, Dano e Inimigo de Teste.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Guide - Dodge, Strong Attack, Lock-on e Habilidades"
+              "title": "Guide - Vida, Dano e Inimigo de Teste"
             }
           }
         ]
@@ -185,6 +185,11 @@
   },
   "active": "66705ce1a1b6f980",
   "lastOpenFiles": [
+    "Planning/Status - Estado Atual e Pendencias.md",
+    "Planning/Guide - Push de Combate.md",
+    "Planning/Finished/Guide - Push de Combate.md",
+    "Planning/Guide - Robustez e Data-Driven do Combate.md.tmp.46944.7af17424f2ec",
+    "Planning/Guide - Vida, Dano e Inimigo de Teste.md",
     "Planning/Guide - Habilidades (Heal e Magia de Ataque).md"
   ]
 }

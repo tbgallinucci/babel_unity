@@ -22,6 +22,7 @@ namespace Babel.Combat
         public bool IsInvulnerable { get; set; }
 
         public event Action<float, float> OnDamaged; // (current, max)
+        public event Action<float, float> OnHealed; // (current, max)
         public event Action OnDeath;
 
         private void Awake()
@@ -43,6 +44,25 @@ namespace Babel.Combat
             {
                 OnDeath?.Invoke();
             }
+        }
+
+        // Evento separado de OnDamaged de propósito — um HitFlash ligado em
+        // OnDamaged não deve piscar de vermelho ao curar só porque os dois
+        // mexem no mesmo CurrentHealth. Sem gate de IsInvulnerable (curar
+        // não é dano, não faz sentido bloquear pela mesma janela de
+        // i-frame) nem de IsAlive (curar um morto não devia reviver
+        // sozinho — sem sistema de respawn ainda, deixa incrementar
+        // CurrentHealth sem sentido prático, mas não é este método que
+        // decide "reviver").
+        public void Heal(float amount)
+        {
+            if (amount <= 0f)
+            {
+                return;
+            }
+
+            CurrentHealth = Mathf.Min(maxHealth, CurrentHealth + amount);
+            OnHealed?.Invoke(CurrentHealth, maxHealth);
         }
     }
 }

@@ -1,3 +1,4 @@
+using Babel.Combat;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -78,15 +79,24 @@ namespace Babel.Equipment
 
         [SerializeField] private WeaponState currentState = WeaponState.Sheathed;
 
+        // Segurança contra trigger descartado (ver PollStateExit): se o
+        // Animator nunca entrar no gesto de Draw/Sheath dentro dessa janela,
+        // o estado volta pro anterior em vez de ficar travado em
+        // Drawing/Sheathing pra sempre. Generoso de propósito — o crossfade
+        // de entrada já é detectado na hora por HasTagNowOrIncoming, então
+        // isso só dispara em falha real, nunca num gesto lento.
+        [SerializeField] private float transitionTimeout = 0.5f;
+
         private InputAction equipAction;
         private int drawTriggerHash;
         private int sheathTriggerHash;
-        private int previousStateHash;
         private int weaponLayerIndex;
         private int isWieldedHash;
         private bool pendingDrawReset;
         private bool pendingSheathReset;
         private bool pendingToggle;
+        private bool sawTransitionState;
+        private float transitionWatchdog;
 
         public WeaponState CurrentState => currentState;
         public bool IsWielded => currentState == WeaponState.Wielded;
@@ -124,15 +134,37 @@ namespace Babel.Equipment
 
         private void Update()
         {
-            // Draw/Sheath só têm transição de saída a partir de Locomotion/
-            // ArmedLocomotion na layer base — disparar durante DashToSprint/Sprint
-            // não tem o que consumir o trigger lá (a UpperBody consome
-            // normalmente, já que não depende da layer base). Sem isso, o trigger
-            // ficaria pendurado e disparava com atraso quando a layer base
-            // finalmente voltasse pra Locomotion/ArmedLocomotion depois do sprint.
-            // Resetar um frame depois de setar dá tempo de as duas layers
-            // reagirem nesse frame (se tiverem transição válida) sem deixar nada
-            // pendente pra disparar tarde.
+            PollStateExit();
+            HandleToggleInput();
+            animator.SetBool(isWieldedHash, IsWielded);
+        }
+
+        // Draw/Sheath só têm transição de saída a partir de Locomotion/
+        // ArmedLocomotion na layer base — disparar durante DashToSprint/Sprint
+        // não tem o que consumir o trigger lá (a UpperBody consome
+        // normalmente, já que não depende da layer base). Sem isso, o trigger
+        // ficaria pendurado e disparava com atraso quando a layer base
+        // finalmente voltasse pra Locomotion/ArmedLocomotion depois do sprint.
+        //
+        // O reset mora em LateUpdate() e não no início do Update() de
+        // propósito — bug real encontrado: TriggerDraw() pode ser chamado de
+        // FORA (PlayerController.RequestDraw(), quando Attack é apertado com
+        // a arma guardada), não só de dentro do próprio HandleToggleInput().
+        // A Unity NÃO garante ordem entre Update() de componentes diferentes.
+        // Se PlayerController.Update() rodasse antes deste Update() no mesmo
+        // frame, a sequência virava: RequestDraw() seta o trigger -> este
+        // Update() roda no MESMO frame -> vê pendingDrawReset==true (setado
+        // segundos atrás, mesmo frame) -> reseta o trigger ANTES do Animator
+        // jamais ter avaliado ele. O trigger nascia e morria no mesmo frame,
+        // sem nunca disparar a transição — silenciosamente, sem erro. Sacar
+        // pelo toggle de Equip nunca mostrava o bug porque TriggerDraw()
+        // roda DENTRO do próprio Update(), sempre depois do bloco de reset
+        // (então só o próximo Update() resetava, dando um frame inteiro pro
+        // Animator). LateUpdate() é garantido pela Unity rodar depois de
+        // TODOS os Update() do frame E depois do Animator já ter avaliado —
+        // elimina a dependência de ordem entre os dois scripts.
+        private void LateUpdate()
+        {
             if (pendingDrawReset)
             {
                 animator.ResetTrigger(drawTriggerHash);
@@ -144,30 +176,62 @@ namespace Babel.Equipment
                 animator.ResetTrigger(sheathTriggerHash);
                 pendingSheathReset = false;
             }
-
-            PollStateExit();
-            HandleToggleInput();
-            animator.SetBool(isWieldedHash, IsWielded);
         }
 
+        // Conclui (ou aborta) uma transição Drawing/Sheathing em andamento.
+        //
+        // A versão anterior comparava o hash do estado da layer contra o do
+        // frame anterior e retornava cedo se não tivesse mudado. Isso tinha um
+        // deadlock PERMANENTE: TriggerDraw() já marca currentState = Drawing
+        // otimisticamente, antes de saber se o Animator aceitou o trigger. Se o
+        // trigger não fosse consumido (a layer nunca sai de Empty — acontece
+        // quando ela já está em transição, ou quando a layer base não está em
+        // Locomotion/ArmedLocomotion, e pendingDrawReset apaga o trigger no
+        // frame seguinte), o hash nunca mudava, o early-return disparava pra
+        // sempre e currentState ficava em Drawing o RESTO DA SESSÃO. A partir
+        // daí IsTransitioning nunca mais liberava o toggle e IsWielded ficava
+        // false pra sempre — o que também matava o ataque (PlayerController cai
+        // no branch de enfileirar combo quando não está nem Sheathed nem
+        // Wielded). Não havia rota de recuperação nenhuma.
+        //
+        // Agora o estado só é dado como concluído depois de CONFIRMAR que o
+        // Animator realmente entrou no gesto, e um watchdog desfaz a intenção
+        // se ele nunca entrar.
         private void PollStateExit()
         {
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(weaponLayerIndex);
-
-            if (stateInfo.fullPathHash == previousStateHash)
+            if (!IsTransitioning)
             {
                 return;
             }
 
-            previousStateHash = stateInfo.fullPathHash;
+            bool drawing = currentState == WeaponState.Drawing;
+            string expectedTag = drawing ? drawingTag : sheathingTag;
 
-            if (currentState == WeaponState.Drawing && !stateInfo.IsTag(drawingTag))
+            if (AnimatorStateUtil.HasTagNowOrIncoming(animator, weaponLayerIndex, expectedTag))
             {
-                currentState = WeaponState.Wielded;
+                sawTransitionState = true;
+                transitionWatchdog = 0f;
+                return;
             }
-            else if (currentState == WeaponState.Sheathing && !stateInfo.IsTag(sheathingTag))
+
+            if (sawTransitionState)
             {
-                currentState = WeaponState.Sheathed;
+                // Entrou no gesto e já saiu — conclusão normal.
+                currentState = drawing ? WeaponState.Wielded : WeaponState.Sheathed;
+                sawTransitionState = false;
+                transitionWatchdog = 0f;
+                return;
+            }
+
+            // Nunca chegou a entrar: o trigger se perdeu. Volta pro estado
+            // anterior (a arma não trocou de socket — OnWeaponGrabbed/
+            // OnWeaponSheathed nunca dispararam) em vez de travar.
+            transitionWatchdog += Time.deltaTime;
+            if (transitionWatchdog >= transitionTimeout)
+            {
+                currentState = drawing ? WeaponState.Sheathed : WeaponState.Wielded;
+                transitionWatchdog = 0f;
+                pendingToggle = false;
             }
         }
 
@@ -206,7 +270,13 @@ namespace Babel.Equipment
         // depender do input de Equip.
         public void RequestDraw()
         {
-            if (currentState != WeaponState.Sheathed || IsJumping() || IsDodging())
+            // Mesmos bloqueios do HandleToggleInput() — antes faltava
+            // IsAttacking() aqui, deixando esta porta mais permissiva que a do
+            // toggle sem motivo. Disparar o trigger num frame em que a layer
+            // não tem transição pra consumi-lo é justamente o que o watchdog
+            // do PollStateExit passou a ter que remediar; melhor não criar a
+            // situação.
+            if (currentState != WeaponState.Sheathed || IsAttacking() || IsJumping() || IsDodging())
             {
                 return;
             }
@@ -214,52 +284,19 @@ namespace Babel.Equipment
             TriggerDraw();
         }
 
+        // As duas checagens abaixo usavam helpers próprios, duplicados aqui —
+        // agora vêm de AnimatorStateUtil (mesma proteção de crossfade, um
+        // lugar só). Ver o comentário de lá pro racional completo.
         private bool IsJumping()
         {
-            bool baseLayerJumping = LayerHasTagNowOrIncoming(0, jumpingTag);
-            bool upperBodyStillGripping = LayerHasStateNowOrIncoming(weaponLayerIndex, armedJumpGripStateName);
-            return baseLayerJumping || upperBodyStillGripping;
+            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, jumpingTag)
+                || AnimatorStateUtil.HasStateNowOrIncoming(animator, weaponLayerIndex, armedJumpGripStateName);
         }
 
         private bool IsDodging()
         {
-            bool baseLayerDodging = LayerHasTagNowOrIncoming(0, dodgingTag);
-            bool upperBodyStillGripping = LayerHasStateNowOrIncoming(weaponLayerIndex, armedDodgeGripStateName);
-            return baseLayerDodging || upperBodyStillGripping;
-        }
-
-        // GetCurrentAnimatorStateInfo só reflete o estado de ORIGEM enquanto uma
-        // transição está em andamento — no crossfade de decolagem
-        // (Locomotion/ArmedLocomotion -> Jump), ele continua reportando o estado
-        // antigo (sem a tag) até o blend terminar de verdade, mesmo o
-        // personagem já tendo saído do chão fisicamente. GetNextAnimatorStateInfo
-        // dá acesso ao estado de DESTINO durante esse período, fechando a janela.
-        private bool LayerHasTagNowOrIncoming(int layerIndex, string tag)
-        {
-            if (animator.GetCurrentAnimatorStateInfo(layerIndex).IsTag(tag))
-            {
-                return true;
-            }
-
-            return animator.IsInTransition(layerIndex) && animator.GetNextAnimatorStateInfo(layerIndex).IsTag(tag);
-        }
-
-        // Mesma pegadinha do método acima, só que checando por NOME de
-        // estado em vez de tag — upperBodyStillGripping (IsJumping()/
-        // IsDodging()) usava só GetCurrentAnimatorStateInfo direto, sem essa
-        // proteção, então durante o crossfade de ENTRADA em ArmedJumpGrip/
-        // ArmedDodgeGrip (Empty/ArmedSprintGrip -> grip) ele reportava false
-        // por um instante mesmo já a caminho — janela onde Draw/Sheath podia
-        // escapar e a UpperBody não terminar de vestir a pose certa (arma
-        // "solta" durante o roll, por exemplo).
-        private bool LayerHasStateNowOrIncoming(int layerIndex, string stateName)
-        {
-            if (animator.GetCurrentAnimatorStateInfo(layerIndex).IsName(stateName))
-            {
-                return true;
-            }
-
-            return animator.IsInTransition(layerIndex) && animator.GetNextAnimatorStateInfo(layerIndex).IsName(stateName);
+            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, dodgingTag)
+                || AnimatorStateUtil.HasStateNowOrIncoming(animator, weaponLayerIndex, armedDodgeGripStateName);
         }
 
         private void TriggerDraw()
@@ -268,6 +305,7 @@ namespace Babel.Equipment
             animator.SetTrigger(drawTriggerHash);
             currentState = WeaponState.Drawing;
             pendingDrawReset = true;
+            BeginTransitionWatch();
         }
 
         private void TriggerSheath()
@@ -276,11 +314,18 @@ namespace Babel.Equipment
             animator.SetTrigger(sheathTriggerHash);
             currentState = WeaponState.Sheathing;
             pendingSheathReset = true;
+            BeginTransitionWatch();
+        }
+
+        private void BeginTransitionWatch()
+        {
+            sawTransitionState = false;
+            transitionWatchdog = 0f;
         }
 
         private bool IsAttacking()
         {
-            return animator.GetCurrentAnimatorStateInfo(0).IsTag(attackTag);
+            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, attackTag);
         }
 
         // -- Callbacks de Animation Event ------------------------------------

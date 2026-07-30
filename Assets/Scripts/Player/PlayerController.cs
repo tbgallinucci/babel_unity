@@ -18,6 +18,26 @@ namespace Babel.Player
         [SerializeField, Range(0f, 1f)] private float slideAttackRampInTime = 0.1f;
         [SerializeField, Range(0f, 1f)] private float slideAttackActiveEnd = 0.4f;
         [SerializeField, Range(0f, 1f)] private float slideAttackRampOutTime = 0.1f;
+        // Quando o estado SlideAttack devolve o controle — alimenta o bool
+        // IsSliding do Animator, e TODAS as saídas do SlideAttack passam a
+        // ser Has Exit Time OFF condicionadas nele (ver o guia de Robustez).
+        //
+        // Antes as saídas eram por Exit Time (ArmedLocomotion em 1.0, Attack1
+        // em 0.8, Attack2Alt em 0.9), cada uma num instante diferente e cada
+        // uma dependendo de um bool de fila diferente — combinação que dava
+        // tanto travamento (a cauda inteira do clipe sem nada acontecer) como
+        // janelas em que nenhuma condição fechava. Com um único ponto de
+        // saída controlado por código isso deixa de ser possível.
+        //
+        // Diferente de slideAttackActiveEnd (0.4), que é só onde o
+        // DESLOCAMENTO forçado termina — o golpe em si ainda toca depois
+        // disso, então sair em 0.4 cortaria o swing.
+        //
+        // 0.9 porque é onde o swing de fato acaba neste clipe: era o Exit
+        // Time já ajustado à mão nas saídas -> ArmedLocomotion e
+        // -> Attack2Alt. A saída -> Attack1 estava em 0.8 e era justamente
+        // ela que cortava o golpe ao emendar no combo.
+        [SerializeField, Range(0f, 1f)] private float slideAttackExitTime = 0.9f;
         [SerializeField] private float sprintJumpBoost = 4f;
         [Header("Dodge")]
         // Sem movimento forçado por código — o roll usa o root motion natural
@@ -72,6 +92,8 @@ namespace Babel.Player
         private float lastGroundedSpeed;
         private bool comboQueued;
         private bool strongComboQueued;
+        private bool dodgeQueued;
+        private bool attackQueued;
         private bool sprinting;
         private bool pendingSprintCancel;
         private int previousStateHash;
@@ -99,7 +121,7 @@ namespace Babel.Player
             weaponEquip = GetComponentInChildren<WeaponEquipController>();
             targeting = GetComponent<TargetingSystem>();
             health = GetComponent<HealthComponent>();
-            upperBodyLayerIndex = animator.GetLayerIndex("UpperBody");
+            upperBodyLayerIndex = animator.GetLayerIndex(AnimStrings.UpperBody);
 
             var playerMap = inputActions.FindActionMap(actionMapName, throwIfNotFound: true);
             moveAction = playerMap.FindAction("Move");
@@ -168,12 +190,37 @@ namespace Babel.Player
             HandleSprint();
             HandleJump();
             HandleDodge();
-            animator.SetFloat("CombatSpeedMultiplier", combatSpeedMultiplier);
+            animator.SetFloat(AnimStrings.CombatSpeedMultiplier, combatSpeedMultiplier);
+            // Espelho de estado (não depende de input), por isso fica aqui e
+            // não num Handle*(): é o único gatilho de saída do SlideAttack.
+            animator.SetBool(AnimStrings.IsSliding, IsSliding());
         }
 
+        // NowOrIncoming (e não GetCurrentAnimatorStateInfo cru) importa muito
+        // aqui: as transições de entrada nos ataques têm 0.25s de crossfade, e
+        // durante esse tempo a versão antiga respondia FALSE mesmo com o golpe
+        // já a caminho. Resultado: spammar ataque nessa janela caía no branch
+        // "começar ataque novo" em vez de "enfileirar combo", re-disparando o
+        // trigger e chamando FaceLockedTargetIfNeeded() de novo (snap de 85%
+        // na rotação, repetido) — combo errático e personagem tremendo.
         private bool IsAttacking()
         {
-            return animator.GetCurrentAnimatorStateInfo(0).IsTag("Attack");
+            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, AnimStrings.Attack);
+        }
+
+        // Semântica "efetiva" (estado de destino durante o crossfade), não
+        // NowOrIncoming, e isso importa nos dois sentidos:
+        //
+        // - Saindo (Dodge -> Attack1): vira false no instante em que o blend
+        //   começa, então a UpperBody solta o grip em sincronia com a base
+        //   layer em vez de segurar os braços na pose de idle por cima do
+        //   golpe (era o bug "só o tronco se move, os braços não").
+        // - Entrando (Attack1 -> Dodge, o dodge-cancel): vira true já no
+        //   começo do blend, então a UpperBody veste o grip na hora e não
+        //   fica um intervalo com a arma "solta" no meio do roll.
+        private bool IsDodging()
+        {
+            return AnimatorStateUtil.EffectiveHasTag(animator, 0, AnimStrings.Dodging);
         }
 
         // GetCurrentAnimatorStateInfo só reflete o estado de ORIGEM enquanto
@@ -186,12 +233,7 @@ namespace Babel.Player
         // apertado cedo durante o crossfade.
         private int GetEffectiveBaseStateHash()
         {
-            if (animator.IsInTransition(0))
-            {
-                return animator.GetNextAnimatorStateInfo(0).fullPathHash;
-            }
-
-            return animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+            return AnimatorStateUtil.EffectiveStateHash(animator, 0);
         }
 
         // Attack2Alt (ex-StrongAttack) reusa a tag "Attack" (de propósito,
@@ -200,7 +242,63 @@ namespace Babel.Player
         // já usada pro SlideAttack em OnAnimatorMove().
         private bool IsStrongAttacking()
         {
-            return animator.GetCurrentAnimatorStateInfo(0).IsName("Attack2Alt");
+            return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
+        }
+
+        // Golpes COMPROMETIDOS: ao contrário do resto do combo (Attack1/2/3,
+        // SlideAttack), Dodge não cancela na hora durante eles — só enfileira
+        // (ver HandleDodge()) e dispara quando o golpe termina naturalmente,
+        // pra não descartar o input só porque apertou um pouco cedo.
+        //
+        // Attack2Alt entra aqui pelo mesmo motivo dos Attack1Alt: é o ataque
+        // forte, e já é tratado como comprometido em outro lugar
+        // (IsStrongAttacking() trava a rotação durante ele).
+        private bool IsInCommittedAttack()
+        {
+            return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt1)
+                || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt2)
+                || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
+        }
+
+        // Mesmo racional do StrongAttack acima: o deslize é todo root motion
+        // forçado por código na direção que o personagem estava olhando
+        // quando o golpe começou (ver OnAnimatorMove) — deixar o input girar
+        // o personagem por cima nesse meio tempo destoa do próprio
+        // deslocamento.
+        //
+        // Mas o lock vale SÓ enquanto o deslize está de fato acontecendo
+        // (mesma janela que OnAnimatorMove usa pra forçar deslocamento:
+        // normalizedTime <= slideAttackActiveEnd). A primeira versão travava
+        // o estado inteiro, e como OnAnimatorMove já zera o movimento depois
+        // de slideAttackActiveEnd, os ~60% finais do clipe ficavam sem
+        // movimento E sem rotação — é isso que dava a sensação de "travado
+        // por 1,5s" no fim do golpe. Na cauda de recuperação o controle
+        // volta; a animação continua tocando normalmente.
+        private bool IsSlideAttacking()
+        {
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            return state.IsName(AnimStrings.SlideAttack) && state.normalizedTime <= slideAttackActiveEnd;
+        }
+
+        // Alimenta o bool IsSliding: "o SlideAttack ainda tem que segurar o
+        // estado?". Todas as saídas do SlideAttack no Animator ficam Has Exit
+        // Time OFF condicionadas em IsSliding == false, então o momento da
+        // saída é decidido só aqui — um ponto de verdade, sem Exit Times
+        // concorrentes que possam se anular e travar.
+        private bool IsSliding()
+        {
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+
+            if (!state.IsName(AnimStrings.SlideAttack))
+            {
+                // Crossfade de ENTRADA: o estado atual ainda é o de origem
+                // (Sprint), e o normalizedTime dele não diz nada sobre o
+                // golpe. Segura true enquanto o SlideAttack está a caminho —
+                // sem isso a saída dispararia no mesmo frame da entrada.
+                return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.SlideAttack);
+            }
+
+            return state.normalizedTime < slideAttackExitTime;
         }
 
         // Golpe aéreo (Attack2Alt no ar): braços tocando o swing via overlay
@@ -219,23 +317,17 @@ namespace Babel.Player
         // tocando o clipe completo normalmente.
         private bool IsJumpAttacking()
         {
-            if (IsUpperBodyEnteringOrIn("ArmedJumpAttack2Alt"))
+            if (IsUpperBodyEnteringOrIn(AnimStrings.ArmedJumpAttack2Alt))
             {
                 return true;
             }
 
-            return animator.GetCurrentAnimatorStateInfo(0).IsName("Attack2AltTail");
+            return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2AltTail);
         }
 
         private bool IsUpperBodyEnteringOrIn(string stateName)
         {
-            if (animator.GetCurrentAnimatorStateInfo(upperBodyLayerIndex).IsName(stateName))
-            {
-                return true;
-            }
-
-            return animator.IsInTransition(upperBodyLayerIndex)
-                && animator.GetNextAnimatorStateInfo(upperBodyLayerIndex).IsName(stateName);
+            return AnimatorStateUtil.HasStateNowOrIncoming(animator, upperBodyLayerIndex, stateName);
         }
 
         // Início do golpe aéreo: só no ar, armado, e só uma vez (não
@@ -254,13 +346,13 @@ namespace Babel.Player
                 && weaponEquip != null && weaponEquip.IsWielded && strongAttackAction.WasPressedThisFrame())
             {
                 FaceLockedTargetIfNeeded();
-                animator.SetTrigger("JumpAttack");
+                animator.SetTrigger(AnimStrings.JumpAttack);
             }
 
             var upperBodyState = animator.GetCurrentAnimatorStateInfo(upperBodyLayerIndex);
-            if (upperBodyState.IsName("ArmedJumpAttack2Alt") && upperBodyState.normalizedTime >= jumpAttackHandoffTime)
+            if (upperBodyState.IsName(AnimStrings.ArmedJumpAttack2Alt) && upperBodyState.normalizedTime >= jumpAttackHandoffTime)
             {
-                animator.SetTrigger("JumpAttackLand");
+                animator.SetTrigger(AnimStrings.JumpAttackLand);
             }
 
             // As transições antigas Jump -> Locomotion/ArmedLocomotion/Sprint
@@ -272,7 +364,7 @@ namespace Babel.Player
             // IsJumpAttacking == false como condição extra no Animator —
             // mesmo racional do bool IsAttacking já usado pra UpperBody não
             // reentrar em ArmedSprintGrip durante o SlideAttack.
-            animator.SetBool("IsJumpAttacking", IsJumpAttacking());
+            animator.SetBool(AnimStrings.IsJumpAttacking, IsJumpAttacking());
         }
 
         // Segurar L2 (leftTrigger) é o modificador das habilidades (Heal/
@@ -319,19 +411,42 @@ namespace Babel.Player
                 // Triângulo foi apertado (hoje só o Attack2 checa isso na
                 // saída), não fica pendurado pros outros hits do combo.
                 strongComboQueued = false;
+                // Idem pro dodge enfileirado durante Attack1Alt1/Attack1Alt2
+                // (ver HandleDodge()) — não deixa "vazar" pra outro estado
+                // caso o combo continue em vez de terminar em Dodge.
+                dodgeQueued = false;
+                // Idem pro ataque enfileirado durante o roll (ver abaixo) — o
+                // consumo acontece justamente na troca Dodge -> Attack1, então
+                // resetar aqui é o que evita ele vazar pro estado seguinte.
+                attackQueued = false;
                 previousStateHash = effectiveHash;
             }
 
             if (attackAction.WasPressedThisFrame() && !IsAbilityModifierHeld())
             {
-                if (weaponEquip != null && weaponEquip.CurrentState == WeaponState.Sheathed)
+                // Durante o roll o ataque ENFILEIRA, não dispara. Antes esse
+                // caso caía direto no branch de atacar, porque IsAttacking()
+                // é false no Dodge (a tag lá é "Dodging"): cada aperto
+                // chamava FaceLockedTargetIfNeeded() (snap de 85% da rotação
+                // pro alvo travado) brigando com o Slerp por frame do
+                // HandleMovement() — o "personagem rolando tremendo" — e
+                // ainda deixava um trigger "Attack" pendurado, já que o
+                // estado Dodge não tem transição nenhuma pra consumi-lo
+                // (só ->Sprint/->ArmedLocomotion/->Locomotion, todas por
+                // Exit Time). O bool é consumido pela transição nova
+                // Dodge -> Attack1 no fim do roll.
+                if (IsDodging())
+                {
+                    attackQueued = weaponEquip == null || weaponEquip.IsWielded;
+                }
+                else if (weaponEquip != null && weaponEquip.CurrentState == WeaponState.Sheathed)
                 {
                     weaponEquip.RequestDraw();
                 }
                 else if (!IsAttacking() && (weaponEquip == null || weaponEquip.IsWielded))
                 {
                     FaceLockedTargetIfNeeded();
-                    animator.SetTrigger("Attack");
+                    animator.SetTrigger(AnimStrings.Attack);
                     // Sprint é toggle — sem cancelar, terminar o SlideAttack com o
                     // toggle ainda ligado faria a layer base (ArmedLocomotion ->
                     // DashToSprint) e a UpperBody (Empty -> ArmedSprintGrip) retomarem
@@ -351,11 +466,12 @@ namespace Babel.Player
                 }
             }
 
-            animator.SetBool("ComboQueued", comboQueued);
+            animator.SetBool(AnimStrings.ComboQueued, comboQueued);
+            animator.SetBool(AnimStrings.AttackQueued, attackQueued);
             // A UpperBody usa isso pra não reentrar em ArmedSprintGrip enquanto o
             // SlideAttack está tocando na layer base — Sprint/IsWielded sozinhos
             // não bastam, já que os dois continuam true durante o ataque.
-            animator.SetBool("IsAttacking", IsAttacking());
+            animator.SetBool(AnimStrings.IsAttacking, IsAttacking());
         }
 
         private void HandleMovement()
@@ -370,7 +486,7 @@ namespace Babel.Player
             // blend de correr.
             if (!IsAttacking())
             {
-                animator.SetFloat("Speed", inputMagnitude, 0.05f, Time.deltaTime);
+                animator.SetFloat(AnimStrings.Speed, inputMagnitude, 0.05f, Time.deltaTime);
             }
 
             // StrongAttack é o golpe pesado/comprometido — ao contrário do combo
@@ -379,7 +495,7 @@ namespace Babel.Player
             // Transform (posição e rotação), então deixar o código girar o
             // personagem por cima destoaria visivelmente do próprio root motion
             // congelado do clipe.
-            if (inputMagnitude > 0.05f && mainCameraTransform != null && !IsStrongAttacking() && !IsJumpAttacking())
+            if (inputMagnitude > 0.05f && mainCameraTransform != null && !IsStrongAttacking() && !IsJumpAttacking() && !IsSlideAttacking())
             {
                 float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;
                 Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
@@ -403,14 +519,14 @@ namespace Babel.Player
                 sprinting = false;
             }
 
-            animator.SetBool("Sprint", sprinting);
+            animator.SetBool(AnimStrings.Sprint, sprinting);
         }
 
         private void HandleJump()
         {
             if (!IsAttacking() && controller.isGrounded && jumpAction.WasPressedThisFrame())
             {
-                animator.SetTrigger("Jump");
+                animator.SetTrigger(AnimStrings.Jump);
                 verticalVelocity = jumpForce;
             }
         }
@@ -431,7 +547,7 @@ namespace Babel.Player
                 strongComboQueued = true;
             }
 
-            animator.SetBool("StrongComboQueued", strongComboQueued);
+            animator.SetBool(AnimStrings.StrongComboQueued, strongComboQueued);
         }
 
         // Só dispara em pé no chão — sem gate de IsAttacking() de propósito:
@@ -443,19 +559,51 @@ namespace Babel.Player
         // elas o trigger fica pendurado sem transição pra consumir. O
         // deslocamento do roll vem do root motion natural do clipe (mesmo
         // branch de chão do OnAnimatorMove), não é calculado aqui.
+        //
+        // Exceção: os golpes comprometidos (Attack1Alt1/Attack1Alt2/
+        // Attack2Alt, ver IsInCommittedAttack()) não usam o cancel imediato — apertar
+        // Dodge durante eles só marca `dodgeQueued` (mesmo idioma do
+        // comboQueued/strongComboQueued: bool persistente lido pelo Animator
+        // via condição, em vez de trigger cru) e o Animator dispara o Dodge
+        // sozinho via Has Exit Time quando o golpe termina naturalmente —
+        // sem isso, apertar um frame cedo demais faria o trigger cru ficar
+        // pendurado sem transição pra consumir (mesma classe de bug já
+        // documentada no combo).
         private void HandleDodge()
         {
             if (controller.isGrounded && dodgeAction.WasPressedThisFrame())
             {
-                animator.SetTrigger("Dodge");
+                if (IsInCommittedAttack())
+                {
+                    dodgeQueued = true;
+                }
+                else
+                {
+                    animator.SetTrigger(AnimStrings.Dodge);
+                }
             }
+
+            animator.SetBool(AnimStrings.DodgeQueued, dodgeQueued);
+            // Quem manda a UpperBody segurar/soltar o ArmedDodgeGrip.
+            //
+            // Antes esse estado saía só por Exit Time — mas o clipe dele
+            // (great sword idle) é LOOP de ~2,0s, enquanto o roll da base
+            // layer dura ~1,17s. "Exit Time 0.95" ali significava ~1,9s do
+            // loop do idle, ou seja, ~0,8s DEPOIS da base layer já ter
+            // saído do Dodge. Exit Time em clipe que faz loop nunca vai
+            // sincronizar com outra layer; a saída tem que ser por condição.
+            animator.SetBool(AnimStrings.IsDodging, IsDodging());
         }
 
-        // Heal/AttackMagic só disparam a animação (sem cura/dano real ainda —
-        // decisão explícita enquanto não existe sistema de vida/dano). As
-        // actions já exigem L2 segurado via composite "Button With One
-        // Modifier" no InputActionAsset, então não precisa checar o
-        // modificador de novo aqui.
+        // Heal dispara a animação; o efeito de cura em si vem de
+        // OnHealApplied (Animation Event no clipe "great sword power up
+        // (heal)", no frame em que o gesto "completa"). AttackMagic reusa
+        // PlayerAttackHitbox.OnAttackHitRadial via Animation Event direto
+        // no clipe "spell cast" — mesmo mecanismo já usado pelo giro do
+        // slide attack, sem precisar de código novo aqui. As actions já
+        // exigem L2 segurado via composite "Button With One Modifier" no
+        // InputActionAsset, então não precisa checar o modificador de novo
+        // aqui.
         private void HandleAbilities()
         {
             if (IsAttacking())
@@ -465,12 +613,24 @@ namespace Babel.Player
 
             if (healAction.WasPressedThisFrame())
             {
-                animator.SetTrigger("Heal");
+                animator.SetTrigger(AnimStrings.Heal);
             }
 
             if (attackMagicAction.WasPressedThisFrame())
             {
-                animator.SetTrigger("AttackMagic");
+                animator.SetTrigger(AnimStrings.AttackMagic);
+            }
+        }
+
+        // Animation Event (float = quantidade curada) no clipe de Heal.
+        // Auto-alvo — cura o próprio player direto no HealthComponent, sem
+        // OverlapSphere nenhum (diferente de OnAttackHit/OnAttackHitRadial,
+        // que miram em quem está na frente/em volta).
+        public void OnHealApplied(float amount)
+        {
+            if (health != null)
+            {
+                health.Heal(amount);
             }
         }
 
@@ -486,11 +646,11 @@ namespace Babel.Player
             // roll usa o mesmo branch de chão normal (root motion natural do
             // clipe "Standing Dodge Forward", sem deslocamento forçado por
             // código) — só a tag "Dodging" identifica a janela de i-frame.
-            IsDodgeInvulnerable = baseStateInfo.IsTag("Dodging")
+            IsDodgeInvulnerable = baseStateInfo.IsTag(AnimStrings.Dodging)
                 && baseStateInfo.normalizedTime >= dodgeIFrameStart
                 && baseStateInfo.normalizedTime <= dodgeIFrameEnd;
 
-            if (baseStateInfo.IsTag("Dashing"))
+            if (baseStateInfo.IsTag(AnimStrings.Dashing))
             {
                 // O clipe do dash foi importado com root motion baked out (fica in
                 // place) de propósito — o avanço rápido é inteiramente forçado aqui,
@@ -505,7 +665,7 @@ namespace Babel.Player
                     : 1f;
                 rootMotionPosition = transform.forward * dashSpeed * rampT * Time.deltaTime;
             }
-            else if (baseStateInfo.IsName("SlideAttack"))
+            else if (baseStateInfo.IsName(AnimStrings.SlideAttack))
             {
                 // Mesma técnica do dash — clipe importado com root motion baked out,
                 // avanço forçado aqui. Não dá pra usar tag pra identificar esse
@@ -556,7 +716,7 @@ namespace Babel.Player
                 // estava correndo/sprintando antes de pular, o que causava um "pop"
                 // de velocidade bem na decolagem. sprintJumpBoost soma um extra só
                 // se ainda estiver sprintando, pra um salto mais longo de propósito.
-                float boost = animator.GetBool("Sprint") ? sprintJumpBoost : 0f;
+                float boost = animator.GetBool(AnimStrings.Sprint) ? sprintJumpBoost : 0f;
                 rootMotionPosition = transform.forward * (lastGroundedSpeed + boost) * Time.deltaTime;
             }
 
