@@ -21,6 +21,13 @@ namespace Babel.Combat
         private Vector3 knockbackVelocity;
         private float remaining;
 
+        // Pra quem mais tenta escrever transform.position no mesmo objeto
+        // (ex.: EnemyBase dirigindo um NavMeshAgent) saber quando ceder o
+        // controle em vez de brigar por ele. Fica genérico de propósito —
+        // não sabe nada de NavMeshAgent, só expõe "ainda tenho um push
+        // rolando"; a coordenação é responsabilidade de quem consome isso.
+        public bool IsActive => remaining > 0f;
+
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();

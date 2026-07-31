@@ -71,14 +71,16 @@ Animation Events (7 clipes, mais que os 4 previstos).
    `null`, o cálculo de `IsDodgeInvulnerable` (i-frames do dodge) não
    chega em lugar nenhum, e o player não pode levar dano nem ser curado
    por `OnHealApplied` (ver §5).
-2. **`EnemyDummy` — conflito de collider resolvido por decisão do
-   usuário**: em vez de um collider-filho dedicado, o
-   `PushTestDummy`/`CapsuleCollider` vira **Is Trigger** (aceitando que o
-   player atravessa o inimigo — não é mais prioridade poder bloquear).
-   Passos: marcar Is Trigger + `Add Component` → `EnemyDummy`
-   (`Babel.Enemies`) no `PushTestDummy` (já satisfaz
-   `HealthComponent`/`Targetable`/`Rigidbody`, os `[RequireComponent]` do
-   script). Ainda não confirmado se foi feito.
+2. **`EnemyDummy` — decisão final: abandonado.** Testado com collider
+   trigger (player atravessava o inimigo) e o usuário não gostou; revertido
+   pra collider não-trigger (bloqueia, como antes) e o componente
+   `EnemyDummy` removido do `PushTestDummy`. Dano por contato não existe
+   mais como mecânica — dano só vem dos ataques do player
+   (`PlayerAttackHitbox`). Próximo passo real, fora deste guia: o usuário
+   vai trazer um modelo + animação de ataque pro inimigo, numa layer
+   própria de Animator (isso já é essencialmente começar a **Fase 3** do
+   guia de migração — `EnemyBase`/state machine/IA — não uma correção
+   pontual deste guia).
 3. Verificações do guia que dependem dos itens acima: dano por contato,
    validar i-frames atravessando o inimigo no meio do roll.
 
