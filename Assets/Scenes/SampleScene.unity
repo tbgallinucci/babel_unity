@@ -188,6 +188,120 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -4161369568681901532, guid: 36c7d0d40bceb6a48b72ca10b4e61616, type: 3}
+--- !u!1001 &16567089
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.13
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 17.81
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.9999125
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.013229571
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -1.516
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (5)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+--- !u!1001 &70055645
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -19.11
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 4.13
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.50212777
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.49769676
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.49063015
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.50936
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -271.327
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 90.819
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (9)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1 &202990294
 GameObject:
   m_ObjectHideFlags: 0
@@ -267,6 +381,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &230976768
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 19.02388
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3.5035625
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7233471
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.6904847
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -87.337
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (2)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!4 &289764349 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3667946887678727147, guid: 92effd58f6aab0b4ebc05276b334e70c, type: 3}
@@ -815,6 +986,63 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 92effd58f6aab0b4ebc05276b334e70c, type: 3}
   m_PrefabInstance: {fileID: 357341634}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &377174245
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -19.11
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.68
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4.27
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.50212777
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.49769676
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.49063015
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.50936
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -271.327
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 90.819
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (10)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -942,6 +1170,63 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1001 &468795133
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 19.693878
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 18.485313
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.70015013
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.7139957
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -91.122
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (3)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1 &559139697 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 92effd58f6aab0b4ebc05276b334e70c, type: 3}
@@ -959,7 +1244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b7852cfd0fd86b4d927a1935e1feb74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Babel.Player.PlayerController
-  rotationSpeed: 15
+  rotationSpeed: 20
   gravity: 9.81
   jumpForce: 3
   dashSpeed: 5
@@ -976,7 +1261,7 @@ MonoBehaviour:
   abilityModifierThreshold: 0.5
   jumpAttackHandoffTime: 0.4
   jumpAttackMaxAirTime: 0.8
-  combatSpeedMultiplier: 1.2
+  combatSpeedMultiplier: 1.4
   inputActions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   actionMapName: Player
 --- !u!143 &559139700
@@ -1226,6 +1511,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &930811685
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -18.99
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -8.99
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.71524817
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.69887054
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -271.327
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (6)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1 &962163056
 GameObject:
   m_ObjectHideFlags: 0
@@ -1676,6 +2018,63 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1001 &1371071328
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -19.08
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.95
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -4.96
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.71524817
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.69887054
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -271.327
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (8)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1 &1501155159
 GameObject:
   m_ObjectHideFlags: 0
@@ -1959,9 +2358,180 @@ NavMeshAgent:
   m_AutoBraking: 1
   m_AutoRepath: 1
   m_Height: 2
-  m_BaseOffset: 0
+  m_BaseOffset: -0.02
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!1001 &1605708189
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -18.66
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+--- !u!1001 &1617343724
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -19.066555
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -5.014432
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.70310897
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.71108216
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -90.646
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (7)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+--- !u!1001 &1646873018
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 19.39
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -16.69
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.93436164
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.35632625
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -41.75
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1001 &1856073586
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2341,6 +2911,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 289764349}
   m_LocalEulerAnglesHint: {x: -33.893, y: -33.843, z: 108.06}
+--- !u!1001 &2013832511
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -5.1039433
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 17.673073
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.019171929
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.9998162
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -182.197
+      objectReference: {fileID: 0}
+    - target: {fileID: -3910990755373119420, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8771091787928289351, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
+      propertyPath: m_Name
+      value: house_mudbrick_babylonian_01 (4)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -4161369568681901532, guid: b436b642cd2a6e1458f2d8264b7699d6, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -2356,3 +2983,14 @@ SceneRoots:
   - {fileID: 1336714843}
   - {fileID: 202990297}
   - {fileID: 1515805177}
+  - {fileID: 1605708189}
+  - {fileID: 1646873018}
+  - {fileID: 230976768}
+  - {fileID: 468795133}
+  - {fileID: 2013832511}
+  - {fileID: 930811685}
+  - {fileID: 1371071328}
+  - {fileID: 70055645}
+  - {fileID: 377174245}
+  - {fileID: 16567089}
+  - {fileID: 1617343724}

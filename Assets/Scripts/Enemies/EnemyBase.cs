@@ -30,6 +30,10 @@ namespace Babel.Enemies
         // já terminaram e devolveram a Base Layer pra lá (via Exit Time do
         // próprio Animator, não um timer duplicado em C#).
         private const string LocomotionStateName = "Locomotion";
+        // Precisa bater com o m_Name do estado do jump attack no
+        // EnemyAnimatorController — usado pra não ler normalizedTime do
+        // estado errado durante o crossfade de entrada (ver TickJumpAttack).
+        private const string JumpAttackStateName = "JumpAttack";
 
         [Header("Roam")]
         [SerializeField] private float roamRadius = 6f;
@@ -333,6 +337,20 @@ namespace Babel.Enemies
         private void TickJumpAttack()
         {
             var info = animator.GetCurrentAnimatorStateInfo(0);
+
+            // Só começa a mover/crescer depois que o Animator REALMENTE
+            // entrou no JumpAttack. Nos frames entre o SetTrigger e o fim do
+            // crossfade, GetCurrentAnimatorStateInfo ainda reporta o
+            // Locomotion — que é um blend tree em LOOP, com normalizedTime
+            // crescendo sem limite (3.7, 12.5...). Dividir isso por
+            // jumpAttackLandNormalizedTime dava t=1 já no primeiro frame: o
+            // inimigo teleportava direto pro ponto de pouso e o telegraph
+            // nascia no tamanho final, antes do pulo sequer começar.
+            if (!info.IsName(JumpAttackStateName))
+            {
+                return;
+            }
+
             float t = Mathf.Clamp01(info.normalizedTime / jumpAttackLandNormalizedTime);
 
             transform.position = Vector3.Lerp(jumpStartPos, landingPoint, t)
