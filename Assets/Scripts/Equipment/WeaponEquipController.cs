@@ -71,6 +71,18 @@ namespace Babel.Equipment
         // Locomotion ou ArmedLocomotion certo, e pra UpperBody saber quando
         // sobrepor os braços com a pose de segurar a espada durante o sprint.
         [SerializeField] private string isWieldedParamName = "IsWielded";
+        // Segundo bool, separado do IsWielded de propósito: IsWielded só vira
+        // true depois que PollStateExit CONFIRMA que o gesto de draw terminou
+        // no Animator — bom demais pra rotear Sprite/ArmedSprint na saída
+        // (a arma já está fixada), ruim demais na ENTRADA (base layer ficaria
+        // preso no clipe desarmado até o gesto inteiro passar). Este aqui
+        // vira true no mesmo frame em que TriggerDraw() é chamado, antes do
+        // Animator sequer processar o trigger — cobre exatamente a janela que
+        // IsWielded deixa passar. Não dá pra usar o próprio Trigger "Draw"
+        // pra isso: é um parâmetro Trigger global, e a UpperBody
+        // (Empty -> GreatSwordDraw1) quase sempre o consome primeiro, então
+        // qualquer outra transição escutando o mesmo Draw acha ele já zerado.
+        [SerializeField] private string isWieldedOrDrawingParamName = "IsWieldedOrDrawing";
 
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
@@ -92,6 +104,7 @@ namespace Babel.Equipment
         private int sheathTriggerHash;
         private int weaponLayerIndex;
         private int isWieldedHash;
+        private int isWieldedOrDrawingHash;
         private bool pendingDrawReset;
         private bool pendingSheathReset;
         private bool pendingToggle;
@@ -116,6 +129,7 @@ namespace Babel.Equipment
             sheathTriggerHash = Animator.StringToHash(sheathTriggerName);
             weaponLayerIndex = animator.GetLayerIndex(weaponLayerName);
             isWieldedHash = Animator.StringToHash(isWieldedParamName);
+            isWieldedOrDrawingHash = Animator.StringToHash(isWieldedOrDrawingParamName);
 
             // A cena autora a espada sob sheathSocket por padrão; forçar o snap no
             // boot garante que estado runtime e visual nunca fiquem dessincronizados.
@@ -137,6 +151,7 @@ namespace Babel.Equipment
             PollStateExit();
             HandleToggleInput();
             animator.SetBool(isWieldedHash, IsWielded);
+            animator.SetBool(isWieldedOrDrawingHash, IsWielded || currentState == WeaponState.Drawing);
         }
 
         // Draw/Sheath só têm transição de saída a partir de Locomotion/

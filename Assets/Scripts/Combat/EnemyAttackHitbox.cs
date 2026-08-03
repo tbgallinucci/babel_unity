@@ -26,11 +26,22 @@ namespace Babel.Combat
 
         [SerializeField] private LayerMask playerLayer;
 
+        // Espelho dos campos do PlayerAttackHitbox — o vídeo do Sakurai é
+        // explícito em que a trava vale nos DOIS sentidos ("quando você acerta
+        // algo OU leva dano"); só o player travando a tela faz apanhar parecer
+        // de mentira. Frames de 60fps, escalando com o dano (técnica 5).
+        [Header("Hit stop")]
+        [SerializeField] private float hitStopBaseFrames = 2.5f;
+        [SerializeField] private float hitStopFramesPerDamage = 0.3f;
+        [SerializeField] private float hitStopMaxFrames = 12f;
+        [SerializeField] private float hitStopMultiplier = 1f;
+
         // Lido pelo EnemyBase pra dimensionar o telegraph — nunca duplicado
         // em outro campo, o que se vê é exatamente o que machuca.
         public float JumpAttackHitRadius => jumpAttackHitRadius;
 
         private EnemyBase owner;
+        private HitStopReceiver selfHitStop;
 
         private void Awake()
         {
@@ -38,6 +49,8 @@ namespace Babel.Combat
             // NavMeshAgent/Rigidbody/collider), este script no filho do
             // Animator. Resolvido sozinho, sem wiring manual no Inspector.
             owner = GetComponentInParent<EnemyBase>();
+            // Mesma raiz, mesmo motivo.
+            selfHitStop = GetComponentInParent<HitStopReceiver>();
         }
 
         // Swipe: esfera deslocada pra frente do inimigo, mesma geometria do
@@ -74,9 +87,25 @@ namespace Babel.Combat
 
             Collider[] hits = Physics.OverlapSphere(origin, radius, playerLayer);
 
+            float hitStopDuration = HitStop.DurationFromDamage(damage, hitStopBaseFrames,
+                hitStopFramesPerDamage, hitStopMaxFrames, hitStopMultiplier);
+
             foreach (Collider hit in hits)
             {
                 HealthComponent health = hit.GetComponentInParent<HealthComponent>();
+
+                // Mesmo gate do PlayerAttackHitbox, e aqui ele é ainda mais
+                // importante: sem isso um ataque ESQUIVADO (i-frames do dodge)
+                // travaria a tela igual a um que acertou, e o feedback do
+                // dodge perfeito viraria idêntico ao de tomar dano.
+                if (health == null || (!health.IsInvulnerable && health.IsAlive))
+                {
+                    // Antes do TakeDamage, mesmo racional do PlayerAttackHitbox:
+                    // o receiver precisa já estar em UnscaledTime quando a
+                    // reação de dano for disparada, pra ela ENTRAR interpolando.
+                    HitStop.Apply(selfHitStop, hit.GetComponentInParent<HitStopReceiver>(), hitStopDuration);
+                }
+
                 if (health != null)
                 {
                     health.TakeDamage(damage);

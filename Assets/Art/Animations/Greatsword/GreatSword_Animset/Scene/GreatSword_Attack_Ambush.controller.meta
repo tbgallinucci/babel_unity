@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 969ca08cd3c09bd4390441c976a110c8
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 160113
+  packageName: GreatSword_Animset
+  packageVersion: 2
+  assetPath: Assets/GreatSword_Animset/Scene/GreatSword_Attack_Ambush.controller
+  uploadId: 373208

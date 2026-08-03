@@ -62,6 +62,28 @@ namespace Babel.Combat
             return animator.GetCurrentAnimatorStateInfo(layer).IsTag(tag);
         }
 
+        // Versão por NOME do EffectiveHasTag acima: durante uma transição
+        // responde pelo estado de DESTINO, não pelo de origem.
+        //
+        // Existe pro caso "esse estado comprometido já terminou?". Usar
+        // HasStateNowOrIncoming pra isso é bug: no frame seguinte ao
+        // SetTrigger o Animator ainda está em crossfade Locomotion -> Attack,
+        // e como o estado ATUAL ainda é Locomotion, aquela checagem responde
+        // "sim, já estou no Locomotion" logo no primeiro frame do golpe. O
+        // inimigo então recuperava o NavMeshAgent imediatamente e saía
+        // perseguindo o player durante toda a animação de ataque (o estado
+        // Attack durava 1 frame só). Aqui, durante o crossfade de ENTRADA o
+        // destino é Attack, então isso responde false e o golpe se mantém.
+        public static bool EffectiveIsName(Animator animator, int layer, string stateName)
+        {
+            if (animator.IsInTransition(layer))
+            {
+                return animator.GetNextAnimatorStateInfo(layer).IsName(stateName);
+            }
+
+            return animator.GetCurrentAnimatorStateInfo(layer).IsName(stateName);
+        }
+
         // Hash do estado que "vale" agora: o de destino se há transição em
         // andamento, senão o atual. Usado pra resetar filas (ComboQueued,
         // StrongComboQueued, DodgeQueued, AttackQueued) exatamente uma vez por

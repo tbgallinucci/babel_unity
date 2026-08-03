@@ -40,11 +40,58 @@ namespace Babel.Player
         [SerializeField, Range(0f, 1f)] private float slideAttackExitTime = 0.9f;
         [SerializeField] private float sprintJumpBoost = 4f;
         [Header("Dodge")]
-        // Sem movimento forçado por código — o roll usa o root motion natural
-        // do clipe "Standing Dodge Forward" (mesmo branch de chão normal do
-        // OnAnimatorMove), então a distância/velocidade vem inteira da
-        // animação, igual Sprint/Locomotion. Nada aqui controla deslocamento,
-        // só a janela de i-frame.
+        // O roll continua sendo root motion do clipe "Standing Dodge Forward"
+        // (mesmo branch de chão normal do OnAnimatorMove) — o PERFIL de
+        // velocidade (o arranque, o pico no meio do rolamento, a
+        // desaceleração no fim) vem inteiro da animação, como em
+        // Sprint/Locomotion. Este campo só multiplica o resultado: 1 = a
+        // distância autorada no clipe, 1.5 = 50% mais longe com exatamente a
+        // mesma cara.
+        //
+        // É deliberadamente um multiplicador do root motion e não um avanço
+        // forçado (o idioma do Dash/SlideAttack, que importam o clipe com root
+        // motion baked out e deslocam 100% por código): aqueles são deslizes
+        // de velocidade constante, onde o clipe não tem deslocamento pra
+        // preservar. Aqui tem, e é justamente ele que faz o roll parecer um
+        // roll.
+        //
+        // Alternativa sem código, se preferir mexer só no clipe: a curva
+        // "Lunge" (Import Settings -> Animation -> Curves) já é somada ao root
+        // motion neste mesmo branch, sem checagem de tag — ver AnimStrings.Lunge
+        // e o uso em OnAnimatorMove. A diferença é que ela SOMA velocidade
+        // extra (podendo achatar o perfil do clipe) em vez de escalar o que já
+        // existe.
+        //
+        // Este é o valor de TOQUE; segurar o botão sobe pro campo de baixo.
+        [SerializeField, Range(0.1f, 4f)] private float dodgeRootMotionScale = 1.8f;
+        // Escala alvo enquanto o botão de dodge continua PRESSIONADO.
+        //
+        // Não dá pra decidir toque vs. segurado no frame do aperto (nesse
+        // instante os dois são idênticos — a diferença só existe no futuro), e
+        // atrasar o disparo pra descobrir custaria latência num input que hoje
+        // sai no MESMO frame. Então o roll começa sempre no valor de toque e
+        // SOBE se o botão continuar segurado, igual pulo variável por altura.
+        [SerializeField, Range(0.1f, 4f)] private float dodgeHeldRootMotionScale = 2.5f;
+        // Quanto tempo a subida de toque -> segurado leva. Rampa e não troca
+        // seca de propósito: 1.8 -> 2.5 é +39% de velocidade instantânea, e
+        // aplicar isso de uma vez no meio do rolamento dá um pop bem visível.
+        // Em ~0.1s a transição já lê como binária pro jogador, mas sem o
+        // degrau — e um toque um pouco mais longo cai naturalmente num valor
+        // intermediário em vez de num degrau arbitrário.
+        [SerializeField] private float dodgeHoldRampTime = 0.1f;
+        // Até quando, contado do começo do roll, segurar ainda pode aumentar a
+        // distância. Fecha a janela pra não dar pra "empurrar" o roll segurando
+        // o botão até o fim do clipe — passado esse tempo o valor congela no
+        // que chegou, mesmo com o botão pressionado.
+        [SerializeField] private float dodgeHoldWindow = 0.22f;
+        // Diagnóstico temporário: loga, no fim de cada roll, a escala que ele
+        // efetivamente usou e quanto o personagem andou de verdade. Serve pra
+        // separar "a escala não está sendo aplicada" de "a escala está sendo
+        // aplicada mas o clipe quase não tem root motion pra escalar" — os dois
+        // se parecem exatamente igual jogando. Pode apagar junto com
+        // dodgeStartPosition e o bloco no UpdateDodgeScale quando não precisar
+        // mais.
+        [SerializeField] private bool logDodgeDistance;
         // Janela (tempo normalizado do clipe) em que IsDodgeInvulnerable fica
         // true — só um stub pro futuro sistema de dano, nada consome isso
         // ainda.
@@ -78,6 +125,33 @@ namespace Babel.Player
         // arrastando o slider.
         [SerializeField, Range(0.5f, 2.5f)] private float combatSpeedMultiplier = 1f;
 
+        [Header("Lunge de ataque")]
+        // Magnitude global do avanço extra dos ataques. A FORMA (quando começa,
+        // onde é o pico, quando zera) vem da curva "Lunge" autorada dentro de
+        // cada clipe; este slider só escala tudo junto, pra dar pra calibrar a
+        // sensação ao vivo em Play Mode sem reabrir Import Settings de seis
+        // clipes — mesma divisão de papéis que combatSpeedMultiplier tem com o
+        // Speed de cada estado.
+        //
+        // Em 0 o sistema inteiro fica inerte, então também serve de kill switch
+        // se o avanço extra brigar com alguma animação nova.
+        [SerializeField, Range(0f, 3f)] private float lungeScale = 1f;
+
+        [Header("Janela de combo")]
+        // Fração inicial de CADA golpe em que o combo ainda não pode avançar:
+        // apertar antes disso enfileira (o bool comboQueued segura o input) e
+        // o golpe seguinte só entra quando a janela abre. Depois dela, o
+        // encadeamento é imediato.
+        //
+        // Mora aqui e não como Exit Time nas transições porque Exit Time no
+        // Unity NÃO é um piso: a condição vira true no frame em que o clipe
+        // cruza o valor e volta a ser false depois. Com Exit Time 0.2, apertar
+        // aos 50% não encadeava nunca — só valia apertar ANTES dos 20% e
+        // esperar o cruzamento, exatamente o oposto do desejado. Mesmo
+        // raciocínio (e mesma solução) do IsSliding logo abaixo: um ponto de
+        // verdade em código, com as transições em Has Exit Time OFF.
+        [SerializeField, Range(0f, 1f)] private float comboWindowStart = 0.2f;
+
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private string actionMapName = "Player";
@@ -93,6 +167,22 @@ namespace Babel.Player
         private bool comboQueued;
         private bool strongComboQueued;
         private bool dodgeQueued;
+        // Intenção de dodge AINDA NÃO disparada, esperando a janela abrir.
+        // Separado do dodgeQueued: aquele é o dodge que sai no fim de um golpe
+        // comprometido (lido por condição no Animator), este é o dodge-cancel
+        // normal, que continua saindo por trigger — só que não mais no frame do
+        // aperto se o golpe ainda estiver na janela inicial.
+        private bool dodgePressed;
+        // Estado da escala variável do roll (ver dodgeRootMotionScale e
+        // companhia). Resolvido por BORDA da tag "Dodging" em OnAnimatorMove, e
+        // não em HandleDodge(), porque o roll tem dois caminhos de entrada: o
+        // trigger disparado por código e o DodgeQueued, que quem dispara é o
+        // Animator no fim de um golpe comprometido — só o segundo já bastaria
+        // pra um reset feito no lado do input não cobrir todos os casos.
+        private float dodgeScale = 1f;
+        private float dodgeElapsed;
+        private bool wasDodging;
+        private Vector3 dodgeStartPosition;
         private bool attackQueued;
         private bool sprinting;
         private bool pendingSprintCancel;
@@ -260,26 +350,6 @@ namespace Babel.Player
                 || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
         }
 
-        // Mesmo racional do StrongAttack acima: o deslize é todo root motion
-        // forçado por código na direção que o personagem estava olhando
-        // quando o golpe começou (ver OnAnimatorMove) — deixar o input girar
-        // o personagem por cima nesse meio tempo destoa do próprio
-        // deslocamento.
-        //
-        // Mas o lock vale SÓ enquanto o deslize está de fato acontecendo
-        // (mesma janela que OnAnimatorMove usa pra forçar deslocamento:
-        // normalizedTime <= slideAttackActiveEnd). A primeira versão travava
-        // o estado inteiro, e como OnAnimatorMove já zera o movimento depois
-        // de slideAttackActiveEnd, os ~60% finais do clipe ficavam sem
-        // movimento E sem rotação — é isso que dava a sensação de "travado
-        // por 1,5s" no fim do golpe. Na cauda de recuperação o controle
-        // volta; a animação continua tocando normalmente.
-        private bool IsSlideAttacking()
-        {
-            var state = animator.GetCurrentAnimatorStateInfo(0);
-            return state.IsName(AnimStrings.SlideAttack) && state.normalizedTime <= slideAttackActiveEnd;
-        }
-
         // Alimenta o bool IsSliding: "o SlideAttack ainda tem que segurar o
         // estado?". Todas as saídas do SlideAttack no Animator ficam Has Exit
         // Time OFF condicionadas em IsSliding == false, então o momento da
@@ -415,6 +485,11 @@ namespace Babel.Player
                 // (ver HandleDodge()) — não deixa "vazar" pra outro estado
                 // caso o combo continue em vez de terminar em Dodge.
                 dodgeQueued = false;
+                // Idem pro dodge-cancel esperando a janela: se o estado trocou
+                // antes dela abrir (o combo emendou, o golpe terminou), a
+                // intenção morre com o golpe em que foi apertada em vez de
+                // disparar um roll fora de hora no estado seguinte.
+                dodgePressed = false;
                 // Idem pro ataque enfileirado durante o roll (ver abaixo) — o
                 // consumo acontece justamente na troca Dodge -> Attack1, então
                 // resetar aqui é o que evita ele vazar pro estado seguinte.
@@ -466,12 +541,40 @@ namespace Babel.Player
                 }
             }
 
-            animator.SetBool(AnimStrings.ComboQueued, comboQueued);
+            // O bool só chega no Animator depois que a janela abre — é isso
+            // que separa "enfileirado" de "encadeia agora". comboQueued (o
+            // campo) continua guardando a intenção desde o instante do aperto;
+            // ComboWindowOpen() decide quando ela vale.
+            animator.SetBool(AnimStrings.ComboQueued, comboQueued && ComboWindowOpen());
             animator.SetBool(AnimStrings.AttackQueued, attackQueued);
             // A UpperBody usa isso pra não reentrar em ArmedSprintGrip enquanto o
             // SlideAttack está tocando na layer base — Sprint/IsWielded sozinhos
             // não bastam, já que os dois continuam true durante o ataque.
             animator.SetBool(AnimStrings.IsAttacking, IsAttacking());
+        }
+
+        // "O golpe atual já passou da janela mínima?" — o gate que substitui o
+        // Exit Time das transições de combo (ver comboWindowStart).
+        private bool ComboWindowOpen()
+        {
+            // Crossfade de ENTRADA num golpe: o estado ATUAL ainda é a origem
+            // (ArmedLocomotion, Dodge, ArmedSprint...) e o normalizedTime dele
+            // não diz nada sobre o golpe que está chegando — que está em ~0%.
+            // Sem isso, um aperto durante os 0,25s de entrada abriria a janela
+            // na hora e o segundo hit emendaria antes do primeiro existir (o
+            // "spamma 3x e cai direto no Attack3").
+            if (animator.IsInTransition(0))
+            {
+                return !animator.GetNextAnimatorStateInfo(0).IsTag(AnimStrings.Attack);
+            }
+
+            var state = animator.GetCurrentAnimatorStateInfo(0);
+            if (!state.IsTag(AnimStrings.Attack))
+            {
+                return true;
+            }
+
+            return state.normalizedTime >= comboWindowStart;
         }
 
         private void HandleMovement()
@@ -480,22 +583,19 @@ namespace Babel.Player
             Vector3 inputDir = new Vector3(moveInput.x, 0f, moveInput.y);
             float inputMagnitude = Mathf.Clamp01(inputDir.magnitude);
 
-            // Rotação continua seguindo o input mesmo atacando (dá pra redirecionar
-            // o golpe) — só o Speed (Blend Tree de locomoção) fica congelado
-            // durante o ataque, senão a pose de ataque piscaria misturada com o
-            // blend de correr.
+            // Speed (Blend Tree de locomoção) fica congelado durante o ataque,
+            // senão a pose de ataque piscaria misturada com o blend de correr.
             if (!IsAttacking())
             {
                 animator.SetFloat(AnimStrings.Speed, inputMagnitude, 0.05f, Time.deltaTime);
             }
 
-            // StrongAttack é o golpe pesado/comprometido — ao contrário do combo
-            // (que pode redirecionar, comentário acima), a rotação trava assim
-            // que o swing começa. O clipe foi baked com todos os canais de Root
-            // Transform (posição e rotação), então deixar o código girar o
-            // personagem por cima destoaria visivelmente do próprio root motion
-            // congelado do clipe.
-            if (inputMagnitude > 0.05f && mainCameraTransform != null && !IsStrongAttacking() && !IsJumpAttacking() && !IsSlideAttacking())
+            // Rotação trava assim que QUALQUER ataque começa, leve ou pesado —
+            // desde a Fase 1 os clipes do combo leve também carregam root
+            // motion próprio (não só o StrongAttack), então deixar o código
+            // girar o personagem por cima destoaria do avanço já autorado no
+            // clipe em qualquer um deles.
+            if (inputMagnitude > 0.05f && mainCameraTransform != null && !IsAttacking())
             {
                 float targetAngle = Mathf.Atan2(inputDir.x, inputDir.z) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;
                 Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
@@ -547,7 +647,10 @@ namespace Babel.Player
                 strongComboQueued = true;
             }
 
-            animator.SetBool(AnimStrings.StrongComboQueued, strongComboQueued);
+            // Mesmo gate de janela do ComboQueued (ver ComboWindowOpen) — o
+            // galho pesado sofria do mesmo problema de Exit Time: apertar
+            // Triângulo depois do cruzamento não fazia mais nada.
+            animator.SetBool(AnimStrings.StrongComboQueued, strongComboQueued && ComboWindowOpen());
         }
 
         // Só dispara em pé no chão — sem gate de IsAttacking() de propósito:
@@ -557,8 +660,9 @@ namespace Babel.Player
         // de entrada em Dodge a partir de cada estado de ataque (Has Exit
         // Time off) são o que de fato torna isso possível no Animator — sem
         // elas o trigger fica pendurado sem transição pra consumir. O
-        // deslocamento do roll vem do root motion natural do clipe (mesmo
-        // branch de chão do OnAnimatorMove), não é calculado aqui.
+        // deslocamento do roll vem do root motion do clipe (mesmo branch de
+        // chão do OnAnimatorMove, só multiplicado por dodgeRootMotionScale
+        // lá), não é calculado aqui.
         //
         // Exceção: os golpes comprometidos (Attack1Alt1/Attack1Alt2/
         // Attack2Alt, ver IsInCommittedAttack()) não usam o cancel imediato — apertar
@@ -579,11 +683,25 @@ namespace Babel.Player
                 }
                 else
                 {
-                    animator.SetTrigger(AnimStrings.Dodge);
+                    dodgePressed = true;
                 }
             }
 
-            animator.SetBool(AnimStrings.DodgeQueued, dodgeQueued);
+            // Fora de ataque a janela já está aberta, então isto dispara no
+            // MESMO frame do aperto — o dodge continua instantâneo na
+            // locomoção, no sprint e no ar. Dentro de um golpe, segura a
+            // intenção até a janela abrir, em vez de cancelar no windup.
+            if (dodgePressed && ComboWindowOpen())
+            {
+                animator.SetTrigger(AnimStrings.Dodge);
+                dodgePressed = false;
+            }
+
+            // Mesmo gate de janela do combo (ver ComboWindowOpen). Vale só pro
+            // dodge ENFILEIRADO — o dodge normal continua sendo trigger cru
+            // disparado na hora logo acima, sem janela nenhuma; a decisão de
+            // cancelar na hora fora dos golpes comprometidos não mudou.
+            animator.SetBool(AnimStrings.DodgeQueued, dodgeQueued && ComboWindowOpen());
             // Quem manda a UpperBody segurar/soltar o ArmedDodgeGrip.
             //
             // Antes esse estado saía só por Exit Time — mas o clipe dele
@@ -634,6 +752,68 @@ namespace Babel.Player
             }
         }
 
+        // Resolve a escala de root motion do roll DESTE frame e devolve se o
+        // roll está em andamento.
+        //
+        // Tag EFETIVA (mesma semântica que IsDodging() já usa) e não
+        // baseStateInfo.IsTag: durante o crossfade de entrada o estado ATUAL
+        // ainda é o de origem, então a versão crua só começaria a escalar
+        // quando o blend TERMINASSE — bem no meio da parte rápida do roll,
+        // dando um degrau de velocidade visível. Aqui a escala vale desde o
+        // primeiro frame da transição; o pouco de root motion do clipe de
+        // origem que entra escalado junto é desprezível (sai de locomoção ou de
+        // um ataque, que quase não saem do lugar).
+        private bool UpdateDodgeScale()
+        {
+            bool dodging = AnimatorStateUtil.EffectiveHasTag(animator, 0, AnimStrings.Dodging);
+
+            if (!dodging)
+            {
+                if (wasDodging && logDodgeDistance)
+                {
+                    Vector3 travelled = transform.position - dodgeStartPosition;
+                    travelled.y = 0f;
+                    Debug.Log($"[Dodge] escala={dodgeScale:F2} distancia={travelled.magnitude:F2}m");
+                }
+
+                wasDodging = false;
+                return false;
+            }
+
+            if (!wasDodging)
+            {
+                // Roll novo sempre começa no valor de TOQUE. Segurar só sobe a
+                // partir daqui, nunca desce: assim não existe frame nenhum em
+                // que o roll saia mais curto do que o toque prometeu, que é o
+                // que aconteceria se a gente chutasse "segurado" na entrada e
+                // corrigisse pra baixo ao ver o botão soltar.
+                wasDodging = true;
+                dodgeElapsed = 0f;
+                dodgeScale = dodgeRootMotionScale;
+                dodgeStartPosition = transform.position;
+            }
+
+            dodgeElapsed += Time.deltaTime;
+
+            if (!dodgeAction.IsPressed()
+                || dodgeElapsed > dodgeHoldWindow
+                || dodgeScale >= dodgeHeldRootMotionScale)
+            {
+                return true;
+            }
+
+            // MoveTowards e não Lerp: rampa de velocidade constante, então
+            // dodgeHoldRampTime é literalmente "quanto tempo leva do valor de
+            // toque até o de segurado", em vez de uma aproximação assintótica
+            // que nunca chega no alvo.
+            float rate = dodgeHoldRampTime > 0f
+                ? (dodgeHeldRootMotionScale - dodgeRootMotionScale) / dodgeHoldRampTime
+                : float.MaxValue;
+            dodgeScale = Mathf.MoveTowards(dodgeScale, dodgeHeldRootMotionScale, rate * Time.deltaTime);
+
+            return true;
+        }
+
         private void OnAnimatorMove()
         {
             if (animator == null) return;
@@ -646,9 +826,17 @@ namespace Babel.Player
             // roll usa o mesmo branch de chão normal (root motion natural do
             // clipe "Standing Dodge Forward", sem deslocamento forçado por
             // código) — só a tag "Dodging" identifica a janela de i-frame.
+            //
+            // Tag CRUA aqui de propósito, ao contrário do UpdateDodgeScale()
+            // logo abaixo: esta checagem depende do normalizedTime do estado, e
+            // durante o crossfade de entrada o normalizedTime que se lê é o do
+            // estado de ORIGEM — casar ele com a tag de destino compararia a
+            // janela de i-frame contra o progresso do clipe errado.
             IsDodgeInvulnerable = baseStateInfo.IsTag(AnimStrings.Dodging)
                 && baseStateInfo.normalizedTime >= dodgeIFrameStart
                 && baseStateInfo.normalizedTime <= dodgeIFrameEnd;
+
+            bool dodging = UpdateDodgeScale();
 
             if (baseStateInfo.IsTag(AnimStrings.Dashing))
             {
@@ -691,10 +879,11 @@ namespace Babel.Player
             }
             else if (controller.isGrounded)
             {
-                // Também cobre o Dodge (root motion natural do clipe "Standing
-                // Dodge Forward", sem deslocamento forçado por código) — o roll
-                // só acontece parado no chão, então cai aqui como qualquer outro
-                // estado de locomoção natural.
+                // Também cobre o Dodge (root motion do clipe "Standing Dodge
+                // Forward", sem deslocamento forçado por código — só um
+                // multiplicador logo abaixo) — o roll só acontece parado no
+                // chão, então cai aqui como qualquer outro estado de locomoção
+                // natural.
                 Vector3 localRootMotion = Quaternion.Inverse(transform.rotation) * animator.deltaPosition;
                 localRootMotion.x = 0f;
                 localRootMotion.y = 0f;
@@ -707,6 +896,48 @@ namespace Babel.Player
                 {
                     lastGroundedSpeed = rootMotionPosition.magnitude / Time.deltaTime;
                 }
+
+                // Escala do roll, DEPOIS do lastGroundedSpeed pelo mesmo
+                // motivo que o Lunge logo abaixo: aquilo alimenta o impulso
+                // horizontal do salto, e um roll mais longo não deve virar
+                // velocidade de decolagem — a medição tem que continuar sendo
+                // a velocidade de locomoção real do clipe.
+                //
+                // Multiplica o vetor inteiro (que aqui já é só o eixo forward,
+                // com x/y zerados acima), então preserva a curva de velocidade
+                // do clipe em vez de somar um valor constante por cima.
+                //
+                // dodgeScale (não o campo dodgeRootMotionScale direto) porque o
+                // valor é variável: começa no de toque e sobe enquanto o botão
+                // ficar segurado. Quem cuida disso é UpdateDodgeScale().
+                if (dodging)
+                {
+                    rootMotionPosition *= dodgeScale;
+                }
+
+                // Avanço extra dos ataques, SOMADO ao root motion (não
+                // substituindo ele, ao contrário do dash e do SlideAttack acima,
+                // cujos clipes foram importados in place justamente pra serem
+                // 100% forçados por código). Aqui o clipe continua mandando no
+                // deslocamento base; a curva só preenche o que falta pro golpe
+                // "avançar" de verdade, porque os clipes de ataque atuais quase
+                // não saem do lugar.
+                //
+                // Sem checagem de tag de propósito: clipe sem a curva "Lunge"
+                // não contribui pro parâmetro, então isto é exatamente zero fora
+                // dos ataques. Deixar o Animator decidir também resolve o
+                // crossfade de graça — GetCurrentAnimatorStateInfo reportaria o
+                // estado de ORIGEM durante o blend (mesma pegadinha do
+                // GetEffectiveBaseStateHash), enquanto GetFloat já devolve o
+                // valor blendado entre os dois clipes.
+                //
+                // Depois do lastGroundedSpeed de propósito: aquilo alimenta o
+                // impulso horizontal do salto, e ataque não deve virar
+                // velocidade de decolagem (nem dá pra pular atacando — HandleJump
+                // exige !IsAttacking()); contaminar a medição só criaria um pico
+                // fantasma difícil de rastrear.
+                rootMotionPosition += transform.forward
+                    * animator.GetFloat(AnimStrings.Lunge) * lungeScale * Time.deltaTime;
             }
             else
             {

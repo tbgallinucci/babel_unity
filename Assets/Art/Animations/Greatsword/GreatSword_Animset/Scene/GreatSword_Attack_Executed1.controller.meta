@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c11a881968ecc744aa448ce9dfeab5e0
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 160113
+  packageName: GreatSword_Animset
+  packageVersion: 2
+  assetPath: Assets/GreatSword_Animset/Scene/GreatSword_Attack_Executed1.controller
+  uploadId: 373208

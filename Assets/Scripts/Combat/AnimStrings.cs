@@ -40,6 +40,14 @@ namespace Babel.Combat
         public const string IsSliding = "IsSliding";
         public const string Heal = "Heal";
         public const string AttackMagic = "AttackMagic";
+        // Único parâmetro aqui que NÃO é escrito por código: quem dirige o
+        // valor é uma curva chamada "Lunge" dentro de cada clipe de ataque
+        // (Import Settings -> Animation -> Curves). O C# só lê
+        // (animator.GetFloat) em OnAnimatorMove. Clipe sem essa curva não
+        // contribui, então o valor fica 0 e o avanço extra simplesmente não
+        // acontece — é isso que deixa o parâmetro entrar no projeto antes de
+        // qualquer clipe novo existir, sem mudar comportamento nenhum.
+        public const string Lunge = "Lunge";
 
         // -- Tags -------------------------------------------------------------
         // "Attack" serve tanto de nome de Trigger (SetTrigger) quanto de tag

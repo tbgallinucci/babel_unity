@@ -144,6 +144,17 @@ namespace Babel.Enemies
                 return;
             }
 
+            // Reforço do mesmo defensivo do Awake() — setar applyRootMotion
+            // uma vez só lá pode não "colar" se o Animator ainda não tinha
+            // terminado de inicializar (bind do Controller/Avatar) naquele
+            // ponto. Todo frame é barato e fecha qualquer janela de timing;
+            // sem isso, root motion residual do clipe de Attack/JumpAttack
+            // desliza o inimigo por cima do NavMeshAgent travado.
+            if (animator != null)
+            {
+                animator.applyRootMotion = false;
+            }
+
             SyncAgentWithKnockback();
 
             // Golpes comprometidos (Attack/JumpAttack) e a reação de Hit
@@ -287,7 +298,14 @@ namespace Babel.Enemies
         private void BeginAttack()
         {
             attackCooldownRemaining = attackCooldown;
+            // isStopped só trava o path-following — o agent ainda pode
+            // deslizar um pouco por obstacle avoidance (evitar sobrepor
+            // outro agente/o player) mesmo "parado". updatePosition/
+            // updateRotation em false tira o agent da equação por completo
+            // durante o golpe, mesma técnica já usada no JumpAttack.
             agent.isStopped = true;
+            agent.updatePosition = false;
+            agent.updateRotation = false;
             FaceTarget(player.position);
             animator.SetTrigger(AttackHash);
             state = State.Attack;
@@ -295,8 +313,16 @@ namespace Babel.Enemies
 
         private void TickAttack()
         {
-            if (AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, LocomotionStateName))
+            // EffectiveIsName, não HasStateNowOrIncoming: durante o crossfade
+            // de ENTRADA no golpe o estado atual ainda é Locomotion, e a
+            // versão conservadora responderia "já acabou" no primeiro frame,
+            // devolvendo o NavMeshAgent e deixando o inimigo perseguir durante
+            // toda a animação de ataque.
+            if (AnimatorStateUtil.EffectiveIsName(animator, 0, LocomotionStateName))
             {
+                agent.Warp(transform.position);
+                agent.updatePosition = true;
+                agent.updateRotation = true;
                 agent.isStopped = false;
                 state = State.Chase;
             }
@@ -336,22 +362,49 @@ namespace Babel.Enemies
 
         private void TickJumpAttack()
         {
-            var info = animator.GetCurrentAnimatorStateInfo(0);
+            // Clipe terminou de vez (Has Exit Time do Animator, ~90%) — só
+            // agora devolve o controle de posição/rotação pro NavMeshAgent.
+            // Antes disso, o pouso em si (HandleJumpAttackLanded, ~45%) já
+            // travou a posição em landingPoint; deixar o inimigo se mover de
+            // novo só nesse ponto faria ele deslizar pelo chão enquanto as
+            // pernas ainda terminam o swing de impacto/recuperação — mesmo
+            // padrão já usado em TickAttack() pro ataque normal (incluindo o
+            // EffectiveIsName — ver o comentário lá).
+            if (AnimatorStateUtil.EffectiveIsName(animator, 0, LocomotionStateName))
+            {
+                agent.updatePosition = true;
+                agent.updateRotation = true;
+                agent.isStopped = false;
+                state = State.Chase;
+                return;
+            }
 
-            // Só começa a mover/crescer depois que o Animator REALMENTE
-            // entrou no JumpAttack. Nos frames entre o SetTrigger e o fim do
-            // crossfade, GetCurrentAnimatorStateInfo ainda reporta o
-            // Locomotion — que é um blend tree em LOOP, com normalizedTime
-            // crescendo sem limite (3.7, 12.5...). Dividir isso por
-            // jumpAttackLandNormalizedTime dava t=1 já no primeiro frame: o
-            // inimigo teleportava direto pro ponto de pouso e o telegraph
-            // nascia no tamanho final, antes do pulo sequer começar.
-            if (!info.IsName(JumpAttackStateName))
+            var info = animator.GetCurrentAnimatorStateInfo(0);
+            float normalizedTime;
+
+            if (info.IsName(JumpAttackStateName))
+            {
+                normalizedTime = info.normalizedTime;
+            }
+            else if (animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsName(JumpAttackStateName))
+            {
+                // Durante o crossfade de entrada, GetCurrentAnimatorStateInfo
+                // ainda reporta o Locomotion — um blend tree em LOOP, com
+                // normalizedTime crescendo sem limite (3.7, 12.5...). Usar
+                // esse valor travaria o pulo até o crossfade terminar de
+                // vez (a pose já visivelmente no ar, mas a posição ainda
+                // colada no chão até então). GetNextAnimatorStateInfo já
+                // reporta o tempo do PRÓPRIO JumpAttack, começando do zero
+                // assim que o crossfade inicia — dá pra levantar o arco
+                // desde o começo do blend, sem esperar ele fechar.
+                normalizedTime = animator.GetNextAnimatorStateInfo(0).normalizedTime;
+            }
+            else
             {
                 return;
             }
 
-            float t = Mathf.Clamp01(info.normalizedTime / jumpAttackLandNormalizedTime);
+            float t = Mathf.Clamp01(normalizedTime / jumpAttackLandNormalizedTime);
 
             transform.position = Vector3.Lerp(jumpStartPos, landingPoint, t)
                 + Vector3.up * (jumpAttackArcHeight * Mathf.Sin(t * Mathf.PI));
@@ -362,26 +415,29 @@ namespace Babel.Enemies
             }
         }
 
-        // Chamado por EnemyAttackHitbox.OnJumpAttackLand (Animation Event
-        // no clipe, no frame correspondente a jumpAttackLandNormalizedTime)
-        // — o evento só pode chamar um método no MESMO GameObject do
-        // Animator (o filho), então é o EnemyAttackHitbox que recebe de
-        // verdade e reencaminha pra cá. Devolve o controle de posição pro
-        // NavMeshAgent e esconde o telegraph.
+        // Chamado por EnemyAttackHitbox.OnJumpAttackLand (Animation Event no
+        // clipe, no frame correspondente a jumpAttackLandNormalizedTime) — o
+        // evento só pode chamar um método no MESMO GameObject do Animator (o
+        // filho), então é o EnemyAttackHitbox que recebe de verdade e
+        // reencaminha pra cá. Só trava a posição em landingPoint e esconde o
+        // telegraph — EnemyAttackHitbox.OnJumpAttackLand lê transform.position
+        // logo em seguida pra centrar a esfera de dano, por isso o snap
+        // precisa acontecer exatamente aqui, não depois.
+        //
+        // NÃO devolve o controle pro NavMeshAgent ainda — o clipe ainda tem
+        // o swing de impacto/recuperação pela frente (~45% a ~90%); isso é
+        // feito por TickJumpAttack() só quando o Animator sai de vez pro
+        // Locomotion, senão o inimigo desliza pelo chão enquanto ainda
+        // parece estar no meio do golpe.
         public void HandleJumpAttackLanded()
         {
             transform.position = landingPoint;
             agent.Warp(landingPoint);
-            agent.updatePosition = true;
-            agent.updateRotation = true;
-            agent.isStopped = false;
 
             if (telegraph != null)
             {
                 telegraph.Hide();
             }
-
-            state = State.Chase;
         }
 
         // Hyper armor durante golpes comprometidos: um golpe do player no
@@ -402,7 +458,9 @@ namespace Babel.Enemies
 
         private void TickHit()
         {
-            if (AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, LocomotionStateName))
+            // Mesmo motivo do TickAttack: HasStateNowOrIncoming daria a
+            // reação de dano como terminada já no primeiro frame dela.
+            if (AnimatorStateUtil.EffectiveIsName(animator, 0, LocomotionStateName))
             {
                 agent.isStopped = false;
                 state = (player != null && Vector3.Distance(transform.position, player.position) <= aggroRadius)

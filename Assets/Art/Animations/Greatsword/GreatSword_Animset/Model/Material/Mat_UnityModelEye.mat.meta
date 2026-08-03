@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 1455e38df8d6065468f3a20aa423a5fe
+timeCreated: 1519793238
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 160113
+  packageName: GreatSword_Animset
+  packageVersion: 2
+  assetPath: Assets/GreatSword_Animset/Model/Material/Mat_UnityModelEye.mat
+  uploadId: 373208
