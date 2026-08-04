@@ -10,35 +10,83 @@ namespace Babel.Player
     public class PlayerController : MonoBehaviour
     {
         [SerializeField] private float rotationSpeed = 15f;
-        [SerializeField] private float gravity = 9.81f;
-        [SerializeField] private float jumpForce = 5f;
-        [SerializeField] private float dashSpeed = 12f;
-        [SerializeField, Range(0f, 1f)] private float dashRampInTime = 0.15f;
-        [SerializeField] private float slideAttackSpeed = 8f;
-        [SerializeField, Range(0f, 1f)] private float slideAttackRampInTime = 0.1f;
-        [SerializeField, Range(0f, 1f)] private float slideAttackActiveEnd = 0.4f;
-        [SerializeField, Range(0f, 1f)] private float slideAttackRampOutTime = 0.1f;
-        // Quando o estado SlideAttack devolve o controle — alimenta o bool
-        // IsSliding do Animator, e TODAS as saídas do SlideAttack passam a
-        // ser Has Exit Time OFF condicionadas nele (ver o guia de Robustez).
+        // NÃO é 9.81. Gravidade real deixa o pulo flutuante: com 9.81, uma
+        // altura de ápice jogável (3-4m) exige uma velocidade inicial tão alta
+        // que a subida vira quase linear (a desaceleração é fraca demais pra
+        // ler como arco) e a queda demora um tempo enorme. Foi exatamente o
+        // sintoma relatado em teste — "sobe em velocidade constante, desce
+        // muito devagar".
         //
-        // Antes as saídas eram por Exit Time (ArmedLocomotion em 1.0, Attack1
-        // em 0.8, Attack2Alt em 0.9), cada uma num instante diferente e cada
-        // uma dependendo de um bool de fila diferente — combinação que dava
-        // tanto travamento (a cauda inteira do clipe sem nada acontecer) como
-        // janelas em que nenhuma condição fechava. Com um único ponto de
-        // saída controlado por código isso deixa de ser possível.
+        // Jogos de ação usam 2-4x a gravidade real justamente por isso. O
+        // arco é definido por duas coisas juntas, não por uma:
+        //   altura do ápice = jumpForce² / (2 * gravity)
+        //   tempo total no ar = 2 * jumpForce / gravity
+        // Com gravity 30 e jumpForce 15: ápice ~3.75m, ~1.0s de ar — subida e
+        // descida com peso, e um tempo de voo que casa com o ciclo do AirLoop
+        // (0.8s), em vez de sobrar meio segundo de flutuação no fim.
+        [SerializeField] private float gravity = 30f;
+        // Calibrado JUNTO com gravity acima e com launchUpwardForce (em
+        // PlayerAttackHitbox) — os três formam um sistema só, mexer em um sem
+        // recalcular os outros quebra o encontro do juggle no ar.
         //
-        // Diferente de slideAttackActiveEnd (0.4), que é só onde o
-        // DESLOCAMENTO forçado termina — o golpe em si ainda toca depois
-        // disso, então sair em 0.4 cortaria o swing.
-        //
-        // 0.9 porque é onde o swing de fato acaba neste clipe: era o Exit
-        // Time já ajustado à mão nas saídas -> ArmedLocomotion e
-        // -> Attack2Alt. A saída -> Attack1 estava em 0.8 e era justamente
-        // ela que cortava o golpe ao emendar no combo.
-        [SerializeField, Range(0f, 1f)] private float slideAttackExitTime = 0.9f;
+        // Como este valor já estava tunado na cena/prefab, mudar aqui só
+        // afeta instâncias NOVAS — o campo já salvo no Inspector do objeto
+        // real precisa ser atualizado à mão pra valer no Play Mode.
+        [SerializeField] private float jumpForce = 15f;
         [SerializeField] private float sprintJumpBoost = 4f;
+
+        [Header("Pulo e combate aéreo")]
+        // Segurança pro impulso do pulo, que saiu do frame do input e passou a
+        // vir do Animation Event OnJumpTakeOff (no frame em que os pés deixam o
+        // chão no clipe Jump Start). Se o event não existir no clipe — clipe
+        // reimportado, event apagado sem querer — o trigger dispara, a animação
+        // toca e o personagem simplesmente NÃO SOBE, sem erro nenhum no
+        // console. Mesmo espírito do watchdog em
+        // WeaponEquipController.PollStateExit: o modo de falha silencioso é o
+        // caro, então há um prazo e um aviso.
+        //
+        // Tem que ser MAIOR que o instante em que o event realmente dispara,
+        // contado em segundos de tempo de estado (duração do clipe dividida
+        // pelo Speed do estado, vezes o tempo normalizado do event). Curto
+        // demais e o watchdog vira falso positivo em todo pulo: um aviso no
+        // console por salto, e o impulso aplicado antes dos pés saírem do chão.
+        [SerializeField] private float jumpTakeOffTimeout = 0.75f;
+        // A partir de quando, no tempo normalizado do launcher (Attack1Alt2),
+        // o pulo pode cancelar a recuperação dele — é o que abre a janela pra
+        // subir atrás do inimigo levantado.
+        //
+        // O piso real é 0.26: é onde o Animation Event OnAttackHitLaunch mora
+        // no clipe (GreatSword_Attack04_Root). Cancelar antes disso pularia
+        // ANTES do golpe conectar, ou seja, o launcher nunca levantaria
+        // ninguém. 0.3 dá uma margem curta depois do impacto.
+        [SerializeField, Range(0f, 1f)] private float launcherJumpCancelStart = 0.3f;
+        // Quanta gravidade age no player durante um ataque aéreo. 0 = trava
+        // total no ar enquanto o golpe toca (o padrão de character action, e o
+        // que faz o juggle fechar na prática — sem isso o player despenca e sai
+        // do alcance do inimigo no meio do combo); 1 = cai normalmente.
+        //
+        // Slider e não bool porque o meio-termo é jogável: 0.2 faz o player
+        // afundar de leve durante o golpe, o que lê como peso sem perder o
+        // alvo.
+        [SerializeField, Range(0f, 1f)] private float airAttackGravityScale = 0f;
+        // Empurrão vertical aplicado no INSTANTE em que um golpe aéreo começa,
+        // em unidades de velocidade (mesma escala do jumpForce).
+        //
+        // Existe porque nem toda descida durante o golpe vem da física: os
+        // dois clipes aéreos estão com Root Transform Position (Y) em Bake
+        // Into Pose, então o movimento vertical DELES fica no visual, e o
+        // corpo afunda um pouco dentro do próprio swing por mais que a
+        // gravidade esteja travada em airAttackGravityScale = 0. Não dá pra
+        // corrigir isso zerando velocidade nenhuma — não é velocidade, é pose.
+        //
+        // Um valor pequeno e positivo (2-4) compensa: o personagem ganha uma
+        // subidinha na entrada do golpe que cancela visualmente o afundamento
+        // do clipe. É também o idioma de vários character action games, onde
+        // atacar no ar dá um "pop" pra cima e sustenta o combo.
+        //
+        // 0 = desligado (comportamento anterior).
+        [SerializeField, Range(0f, 8f)] private float airAttackLift = 3f;
+
         [Header("Dodge")]
         // O roll continua sendo root motion do clipe "Standing Dodge Forward"
         // (mesmo branch de chão normal do OnAnimatorMove) — o PERFIL de
@@ -49,8 +97,9 @@ namespace Babel.Player
         // mesma cara.
         //
         // É deliberadamente um multiplicador do root motion e não um avanço
-        // forçado (o idioma do Dash/SlideAttack, que importam o clipe com root
-        // motion baked out e deslocam 100% por código): aqueles são deslizes
+        // forçado (o idioma do Dash/SlideAttack, que importavam o clipe com
+        // root motion baked out e deslocavam 100% por código — os dois foram
+        // removidos, mas o contraste continua valendo): aqueles eram deslizes
         // de velocidade constante, onde o clipe não tem deslocamento pra
         // preservar. Aqui tem, e é justamente ele que faz o roll parecer um
         // roll.
@@ -103,26 +152,10 @@ namespace Babel.Player
         // perto de 1 = quase encara o alvo na hora, sem ficar um teleporte
         // 100% instantâneo.
         [SerializeField, Range(0f, 1f)] private float lockOnFacingLerp = 0.85f;
-        [SerializeField] private float abilityModifierThreshold = 0.5f;
-        [Header("Jump Attack (Attack2Alt aéreo)")]
-        // Precisa bater com o Exit Time da transição ArmedJumpAttack2Alt ->
-        // Empty na layer UpperBody (Animator) — os dois lados concordam
-        // visualmente sobre onde termina o swing e começa a recuperação.
-        // Sem ligação automática entre os dois, ajustar um sem o outro
-        // desalinha o handoff.
-        [SerializeField, Range(0f, 1f)] private float jumpAttackHandoffTime = 0.85f;
-        // Janela máxima de queda (segundos) em que ainda dá pra iniciar o
-        // golpe aéreo — apertar tarde demais na queda é ignorado, porque não
-        // sobraria ar suficiente pro swing terminar decentemente antes do
-        // pouso físico. Baseado em tempo de queda real (airTime), não no
-        // normalizedTime do Jump — os dois são dissociados (Jump é uma
-        // animação com duração própria, o tempo de ar real vem só da física
-        // de jumpForce/gravity).
-        [SerializeField] private float jumpAttackMaxAirTime = 0.4f;
         // Multiplicador de playback só pros estados de combate (Attack1/2/3,
-        // SlideAttack) — ligado ao Speed desses estados no Animator via
-        // "Parameter" (não afeta locomoção/idle). Testável ao vivo em Play Mode
-        // arrastando o slider.
+        // Attack1Alt1/Alt2, Attack2Alt, AirAttack1/2) — ligado ao Speed desses
+        // estados no Animator via "Parameter" (não afeta locomoção/idle).
+        // Testável ao vivo em Play Mode arrastando o slider.
         [SerializeField, Range(0.5f, 2.5f)] private float combatSpeedMultiplier = 1f;
 
         [Header("Lunge de ataque")]
@@ -147,9 +180,9 @@ namespace Babel.Player
         // Unity NÃO é um piso: a condição vira true no frame em que o clipe
         // cruza o valor e volta a ser false depois. Com Exit Time 0.2, apertar
         // aos 50% não encadeava nunca — só valia apertar ANTES dos 20% e
-        // esperar o cruzamento, exatamente o oposto do desejado. Mesmo
-        // raciocínio (e mesma solução) do IsSliding logo abaixo: um ponto de
-        // verdade em código, com as transições em Has Exit Time OFF.
+        // esperar o cruzamento, exatamente o oposto do desejado. A solução é a
+        // mesma aplicada ao IsJumping/AirLoop: um ponto de verdade em código,
+        // com as transições em Has Exit Time OFF.
         [SerializeField, Range(0f, 1f)] private float comboWindowStart = 0.2f;
 
         [Header("Input")]
@@ -164,6 +197,30 @@ namespace Babel.Player
         private Transform mainCameraTransform;
         private float verticalVelocity;
         private float lastGroundedSpeed;
+        // "O player está no ar?" — latch, não `!controller.isGrounded` cru.
+        //
+        // O valor cru não serve como fonte de verdade aqui por causa das duas
+        // pontas do pulo. Na SUBIDA: entre o SetTrigger(Jump) e o Animation
+        // Event de decolagem o clipe Jump Start está agachando e os pés ainda
+        // tocam o chão, então o valor cru diria "no chão" com o pulo já em
+        // andamento — e o Animator sairia do AirLoop pro JumpEnd na hora. No
+        // POUSO: CharacterController.isGrounded oscila entre frames em contato
+        // raspante, e cada oscilação seria uma ida e volta ao JumpEnd.
+        //
+        // Aberto por ApplyJumpImpulse() e fechado só quando o personagem está no
+        // chão E já parou de subir — as duas condições juntas, pra um
+        // encostão em teto ou rampa no meio da subida não contar como pouso.
+        private bool airborne;
+        // Borda do ataque aéreo, pra zerar a velocidade vertical uma vez na
+        // entrada em vez de todo frame (ver OnAnimatorMove). Mesmo idioma do
+        // wasDodging logo abaixo.
+        private bool wasAirAttacking;
+        // Prazo do watchdog de decolagem (ver jumpTakeOffTimeout). Negativo =
+        // nenhum pulo esperando o event.
+        private float takeOffWatchdog = -1f;
+        // Pulo apertado durante o launcher (Attack1Alt2) antes da janela de
+        // cancel abrir — ver HandleJump()/CanLauncherJumpCancel().
+        private bool jumpQueued;
         private bool comboQueued;
         private bool strongComboQueued;
         private bool dodgeQueued;
@@ -188,7 +245,6 @@ namespace Babel.Player
         private bool pendingSprintCancel;
         private int previousStateHash;
         private int upperBodyLayerIndex;
-        private float airTime;
 
         // Stub pro futuro sistema de dano — só a janela de invulnerabilidade
         // calculada, sem nenhum consumidor ainda.
@@ -200,9 +256,6 @@ namespace Babel.Player
         private InputAction sprintAction;
         private InputAction dodgeAction;
         private InputAction strongAttackAction;
-        private InputAction healAction;
-        private InputAction attackMagicAction;
-        private InputAction abilityModifierAction;
 
         private void Awake()
         {
@@ -220,9 +273,6 @@ namespace Babel.Player
             sprintAction = playerMap.FindAction("Sprint");
             dodgeAction = playerMap.FindAction("Dodge");
             strongAttackAction = playerMap.FindAction("StrongAttack");
-            healAction = playerMap.FindAction("Heal");
-            attackMagicAction = playerMap.FindAction("AttackMagic");
-            abilityModifierAction = playerMap.FindAction("AbilityModifierHeld");
 
             if (Camera.main != null)
             {
@@ -238,22 +288,29 @@ namespace Babel.Player
             sprintAction.Enable();
             dodgeAction.Enable();
             strongAttackAction.Enable();
-            healAction.Enable();
-            attackMagicAction.Enable();
-            abilityModifierAction.Enable();
+
+            // Ver o comentário em WeaponEquipController.JumpTakeOff: o
+            // Animation Event cai lá (mesmo GameObject do Animator), não
+            // aqui, então é assinatura de evento, não SendMessage direto.
+            if (weaponEquip != null)
+            {
+                weaponEquip.JumpTakeOff += ApplyJumpImpulse;
+            }
         }
 
         private void OnDisable()
         {
+            if (weaponEquip != null)
+            {
+                weaponEquip.JumpTakeOff -= ApplyJumpImpulse;
+            }
+
             moveAction.Disable();
             attackAction.Disable();
             jumpAction.Disable();
             sprintAction.Disable();
             dodgeAction.Disable();
             strongAttackAction.Disable();
-            healAction.Disable();
-            attackMagicAction.Disable();
-            abilityModifierAction.Disable();
         }
 
         private void Update()
@@ -266,24 +323,29 @@ namespace Babel.Player
                 pendingSprintCancel = false;
             }
 
-            // Tempo real de queda — zera assim que toca o chão, acumula
-            // enquanto no ar. É contra ISSO que HandleJumpAttack() mede a
-            // janela de início do golpe aéreo, não contra o normalizedTime
-            // do Jump (que não tem relação com o tempo de ar físico real).
-            airTime = controller.isGrounded ? 0f : airTime + Time.deltaTime;
-
             HandleAttack();
             HandleStrongAttack();
-            HandleJumpAttack();
-            HandleAbilities();
             HandleMovement();
             HandleSprint();
             HandleJump();
             HandleDodge();
             animator.SetFloat(AnimStrings.CombatSpeedMultiplier, combatSpeedMultiplier);
-            // Espelho de estado (não depende de input), por isso fica aqui e
-            // não num Handle*(): é o único gatilho de saída do SlideAttack.
-            animator.SetBool(AnimStrings.IsSliding, IsSliding());
+
+            // Pouso. Exige as DUAS condições: no chão E não subindo mais.
+            // Só isGrounded bastaria pra fechar o latch cedo demais num
+            // encostão de rampa durante a subida — e fechar o latch é o que
+            // manda o Animator sair do AirLoop pro JumpEnd, ou seja, o
+            // personagem "aterrissaria" no meio do ar.
+            if (airborne && controller.isGrounded && verticalVelocity <= 0f)
+            {
+                airborne = false;
+            }
+
+            // Único ponto que escreve o airborne no Animator. É o que segura o
+            // AirLoop (que é loop e não tem Exit Time pra sair) e o que dispara
+            // o JumpEnd no pouso — o tempo de ar é físico, não tem relação
+            // nenhuma com a duração de clipe nenhum.
+            animator.SetBool(AnimStrings.IsJumping, airborne);
         }
 
         // NowOrIncoming (e não GetCurrentAnimatorStateInfo cru) importa muito
@@ -329,14 +391,14 @@ namespace Babel.Player
         // Attack2Alt (ex-StrongAttack) reusa a tag "Attack" (de propósito,
         // pra IsAttacking()/combo funcionarem sem mudança), então precisa
         // checar por nome pra diferenciar do resto do combo — mesma técnica
-        // já usada pro SlideAttack em OnAnimatorMove().
+        // usada pelos ataques aéreos em IsAirAttacking().
         private bool IsStrongAttacking()
         {
             return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
         }
 
-        // Golpes COMPROMETIDOS: ao contrário do resto do combo (Attack1/2/3,
-        // SlideAttack), Dodge não cancela na hora durante eles — só enfileira
+        // Golpes COMPROMETIDOS: ao contrário do resto do combo (Attack1/2/3),
+        // Dodge não cancela na hora durante eles — só enfileira
         // (ver HandleDodge()) e dispara quando o golpe termina naturalmente,
         // pra não descartar o input só porque apertou um pouco cedo.
         //
@@ -350,100 +412,20 @@ namespace Babel.Player
                 || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
         }
 
-        // Alimenta o bool IsSliding: "o SlideAttack ainda tem que segurar o
-        // estado?". Todas as saídas do SlideAttack no Animator ficam Has Exit
-        // Time OFF condicionadas em IsSliding == false, então o momento da
-        // saída é decidido só aqui — um ponto de verdade, sem Exit Times
-        // concorrentes que possam se anular e travar.
-        private bool IsSliding()
-        {
-            var state = animator.GetCurrentAnimatorStateInfo(0);
-
-            if (!state.IsName(AnimStrings.SlideAttack))
-            {
-                // Crossfade de ENTRADA: o estado atual ainda é o de origem
-                // (Sprint), e o normalizedTime dele não diz nada sobre o
-                // golpe. Segura true enquanto o SlideAttack está a caminho —
-                // sem isso a saída dispararia no mesmo frame da entrada.
-                return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.SlideAttack);
-            }
-
-            return state.normalizedTime < slideAttackExitTime;
-        }
-
-        // Golpe aéreo (Attack2Alt no ar): braços tocando o swing via overlay
-        // na UpperBody (ArmedJumpAttack2Alt) OU já entregue pra base layer
-        // no trecho final (Attack2AltTail, depois do handoff em
-        // HandleJumpAttack()). Os dois contam como "atacando no ar" pros
-        // gates de rotação/retrigger.
+        // Os dois ataques aéreos. Por NOME de estado e não por tag pelo motivo
+        // já documentado em AnimStrings.AirAttack1: a tag deles é "Attack" (é o
+        // que faz o combo, a trava de rotação e o bloqueio de Draw/Sheath
+        // valerem no ar de graça), e estado do Unity só tem uma tag.
         //
-        // Checa GetNextAnimatorStateInfo durante o crossfade de entrada
-        // (ArmedJumpGrip -> ArmedJumpAttack2Alt) — sem isso, essa checagem
-        // reporta false durante toda a duração do blend (mesma pegadinha do
-        // GetEffectiveBaseStateHash acima), abrindo uma janela onde
-        // IsJumpAttacking==false ainda, e as transições antigas do Jump
-        // (que dependem desse gate) escapam pra Locomotion/ArmedLocomotion
-        // antes da hora — a perna dessincroniza do braço, que continua
-        // tocando o clipe completo normalmente.
-        private bool IsJumpAttacking()
+        // Semântica EFETIVA (estado de destino durante o crossfade), igual ao
+        // IsDodging(): quem consome isto é a suspensão de gravidade em
+        // OnAnimatorMove, e ela precisa valer desde o primeiro frame do blend.
+        // Esperar o crossfade terminar deixaria o player despencar durante a
+        // entrada do golpe — justo o instante em que ele precisa parar no ar.
+        private bool IsAirAttacking()
         {
-            if (IsUpperBodyEnteringOrIn(AnimStrings.ArmedJumpAttack2Alt))
-            {
-                return true;
-            }
-
-            return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2AltTail);
-        }
-
-        private bool IsUpperBodyEnteringOrIn(string stateName)
-        {
-            return AnimatorStateUtil.HasStateNowOrIncoming(animator, upperBodyLayerIndex, stateName);
-        }
-
-        // Início do golpe aéreo: só no ar, armado, e só uma vez (não
-        // retrigger enquanto IsJumpAttacking() já está rolando). O handoff
-        // pra perna (JumpAttackLand) não pode depender de Exit Time do Jump
-        // — Jump e o swing têm durações independentes (Jump é físico/
-        // variável, o swing é fixo), então precisa de polling por código do
-        // estado da UpperBody, mesma técnica que WeaponEquipController já
-        // usa em vez de confiar em Exit Time pro Jump/ArmedJumpGrip.
-        private void HandleJumpAttack()
-        {
-            // airTime <= jumpAttackMaxAirTime: apertar tarde demais na queda
-            // é ignorado — não sobraria ar suficiente pro swing (mesmo com o
-            // Cycle Offset pulando o windup) terminar antes do pouso físico.
-            if (!controller.isGrounded && airTime <= jumpAttackMaxAirTime && !IsAbilityModifierHeld() && !IsJumpAttacking()
-                && weaponEquip != null && weaponEquip.IsWielded && strongAttackAction.WasPressedThisFrame())
-            {
-                FaceLockedTargetIfNeeded();
-                animator.SetTrigger(AnimStrings.JumpAttack);
-            }
-
-            var upperBodyState = animator.GetCurrentAnimatorStateInfo(upperBodyLayerIndex);
-            if (upperBodyState.IsName(AnimStrings.ArmedJumpAttack2Alt) && upperBodyState.normalizedTime >= jumpAttackHandoffTime)
-            {
-                animator.SetTrigger(AnimStrings.JumpAttackLand);
-            }
-
-            // As transições antigas Jump -> Locomotion/ArmedLocomotion/Sprint
-            // são só por Exit Time, sem gate nenhum — se o clipe do Jump
-            // atinge o próprio Exit Time antes do JumpAttackLand disparar
-            // (bem provável, o swing pode durar mais que o pouso "normal"),
-            // elas roubam a base layer pra fora do Jump antes da transição
-            // pro Attack2AltTail ter chance de vencer. Precisam de
-            // IsJumpAttacking == false como condição extra no Animator —
-            // mesmo racional do bool IsAttacking já usado pra UpperBody não
-            // reentrar em ArmedSprintGrip durante o SlideAttack.
-            animator.SetBool(AnimStrings.IsJumpAttacking, IsJumpAttacking());
-        }
-
-        // Segurar L2 (leftTrigger) é o modificador das habilidades (Heal/
-        // AttackMagic) — sem esse gate, apertar Triângulo/Quadrado com L2
-        // segurado disparava a habilidade E o ataque forte/combo normal ao
-        // mesmo tempo, já que os dois compartilham o mesmo botão físico.
-        private bool IsAbilityModifierHeld()
-        {
-            return abilityModifierAction.ReadValue<float>() >= abilityModifierThreshold;
+            return AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.AirAttack1)
+                || AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.AirAttack2);
         }
 
         // Gira o personagem pro alvo travado no instante em que um golpe é
@@ -494,10 +476,17 @@ namespace Babel.Player
                 // consumo acontece justamente na troca Dodge -> Attack1, então
                 // resetar aqui é o que evita ele vazar pro estado seguinte.
                 attackQueued = false;
+                // Idem pro pulo enfileirado durante o launcher (ver
+                // HandleJump()/CanLauncherJumpCancel()) — se o Attack1Alt2
+                // terminar sem a janela de cancel ter aberto (o combo emendou
+                // pro Attack3 via ComboQueued, por exemplo), a intenção morre
+                // com o golpe em vez de disparar um pulo fora de hora já
+                // dentro do estado seguinte.
+                jumpQueued = false;
                 previousStateHash = effectiveHash;
             }
 
-            if (attackAction.WasPressedThisFrame() && !IsAbilityModifierHeld())
+            if (attackAction.WasPressedThisFrame())
             {
                 // Durante o roll o ataque ENFILEIRA, não dispara. Antes esse
                 // caso caía direto no branch de atacar, porque IsAttacking()
@@ -522,16 +511,18 @@ namespace Babel.Player
                 {
                     FaceLockedTargetIfNeeded();
                     animator.SetTrigger(AnimStrings.Attack);
-                    // Sprint é toggle — sem cancelar, terminar o SlideAttack com o
-                    // toggle ainda ligado faria a layer base (ArmedLocomotion ->
-                    // DashToSprint) e a UpperBody (Empty -> ArmedSprintGrip) retomarem
-                    // o sprint sozinhas em vez de assentar no idle armado. Mas não dá
-                    // pra zerar `sprinting` no mesmo frame do SetTrigger: o Animator
-                    // veria Attack + Sprint==false ao mesmo tempo, e como
-                    // Sprint->ArmedLocomotion (Sprint==false) também fica satisfeita
-                    // junto com Sprint->SlideAttack, a ordem das transições na lista
-                    // decide qual vence — arriscado. Adiar um frame garante que o
-                    // SlideAttack já foi resolvido com Sprint ainda true antes do
+                    // Sprint é toggle — sem cancelar, terminar um ataque
+                    // disparado a partir do sprint com o toggle ainda ligado
+                    // faria a layer base e a UpperBody (Empty ->
+                    // ArmedSprintGrip) retomarem o sprint sozinhas em vez de
+                    // assentar no idle armado. Mas não dá pra zerar `sprinting`
+                    // no mesmo frame do SetTrigger: o Animator veria Attack +
+                    // Sprint==false ao mesmo tempo, e como
+                    // ArmedSprint->ArmedLocomotion (Sprint==false,
+                    // IsAttacking==false) fica satisfeita junto com
+                    // ArmedSprint->Attack1, a ordem das transições na lista
+                    // decide qual vence — arriscado. Adiar um frame garante que
+                    // o ataque já foi resolvido com Sprint ainda true antes do
                     // toggle cair.
                     pendingSprintCancel = true;
                 }
@@ -547,9 +538,12 @@ namespace Babel.Player
             // ComboWindowOpen() decide quando ela vale.
             animator.SetBool(AnimStrings.ComboQueued, comboQueued && ComboWindowOpen());
             animator.SetBool(AnimStrings.AttackQueued, attackQueued);
-            // A UpperBody usa isso pra não reentrar em ArmedSprintGrip enquanto o
-            // SlideAttack está tocando na layer base — Sprint/IsWielded sozinhos
-            // não bastam, já que os dois continuam true durante o ataque.
+            // A UpperBody usa isso pra não reentrar em ArmedSprintGrip enquanto
+            // um ataque está tocando na layer base — Sprint/IsWielded sozinhos
+            // não bastam, já que continuam true durante o golpe. (O pulo não
+            // tem overlay própria pra proteger — os clipes de pulo já são
+            // armados, então a UpperBody fica em Empty o tempo todo, dentro ou
+            // fora de ataque.)
             animator.SetBool(AnimStrings.IsAttacking, IsAttacking());
         }
 
@@ -622,13 +616,126 @@ namespace Babel.Player
             animator.SetBool(AnimStrings.Sprint, sprinting);
         }
 
+        // O trigger é tudo que sai daqui — o IMPULSO mudou de lugar e agora vem
+        // do Animation Event OnJumpTakeOff, no frame em que os pés deixam o
+        // chão no clipe Jump Start.
+        //
+        // Antes os dois aconteciam no frame do input, e o personagem subia
+        // durante o agachamento de antecipação do clipe: a pose dizia "estou
+        // tomando impulso" enquanto o corpo já estava a meio metro do chão. Com
+        // o pulo em três estados isso pioraria — o Jump Start inteiro tocaria
+        // no ar.
+        //
+        // O gate de ataque deixou de ser um !IsAttacking() cru: o pulo agora
+        // cancela o launcher (Attack1Alt2) na janela em que o inimigo ainda
+        // está subindo, que é o que abre o juggle. Continua bloqueado durante
+        // qualquer OUTRO golpe — a exceção é do launcher, não do combate
+        // inteiro.
+        //
+        // O aperto durante o launcher ENFILEIRA (jumpQueued), mesmo idioma do
+        // resto do combo (comboQueued/strongComboQueued/dodgeQueued/
+        // attackQueued) — e pelo mesmo motivo: a versão anterior só checava
+        // CanLauncherJumpCancel() no exato frame do aperto. Apertar um frame
+        // antes da janela abrir (bem provável — a reação natural é apertar
+        // assim que o golpe começa a tocar, não esperar contar até 0.30) fazia
+        // o input ser descartado pra sempre, sem nenhum feedback; a única
+        // saída era apertar de NOVO já dentro da janela, o que lê como "o
+        // cancel não responde".
         private void HandleJump()
         {
-            if (!IsAttacking() && controller.isGrounded && jumpAction.WasPressedThisFrame())
+            if (takeOffWatchdog >= 0f)
             {
-                animator.SetTrigger(AnimStrings.Jump);
-                verticalVelocity = jumpForce;
+                takeOffWatchdog -= Time.deltaTime;
+                if (takeOffWatchdog < 0f)
+                {
+                    Debug.LogWarning("[Jump] OnJumpTakeOff não chegou — o Animation " +
+                        "Event some do clipe Jump Start? Aplicando o impulso pelo watchdog.");
+                    ApplyJumpImpulse();
+                }
             }
+
+            if (controller.isGrounded && jumpAction.WasPressedThisFrame())
+            {
+                // Só o launcher é cancelável — outros golpes (Attack1/2/3,
+                // Attack1Alt1, Attack2Alt) não têm a transição de cancel no
+                // Animator, então enfileirar ali deixaria jumpQueued preso até
+                // o reset por troca de estado, sem nunca disparar. Igual ao
+                // IsDodging() abaixo: o aperto nesses casos é descartado
+                // mesmo, não enfileirado.
+                if (AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt2))
+                {
+                    jumpQueued = true;
+                }
+                else if (!IsAttacking() && !IsDodging())
+                {
+                    // Bug pré-existente, não introduzido pelo combate aéreo: o
+                    // roll acontece no chão e passava por todos os gates
+                    // acima (a tag do Dodge é "Dodging", então IsAttacking()
+                    // é false lá), mas o estado Dodge não tem transição
+                    // nenhuma pro pulo. O trigger ficava pendurado e disparava
+                    // quando o roll terminasse — um pulo fantasma, atrasado,
+                    // que ninguém pediu naquele instante.
+                    //
+                    // Bloquear (não enfileirar) é o conserto conservador:
+                    // mantém o que o jogo faz hoje de fato (não pular durante
+                    // o roll) sem o efeito colateral. Se roll -> pulo virar
+                    // mecânica desejada, o conserto é o oposto — tirar o
+                    // IsDodging() daqui e desenhar Dodge -> JumpStart no
+                    // Animator, como o dodge-cancel dos ataques já faz.
+                    FireJumpTrigger();
+                }
+            }
+
+            // Consumo do pulo enfileirado: dispara no EXATO frame em que a
+            // janela abre, não só quando o botão é apertado de novo dentro
+            // dela — é isso que faz o cancel responder assim que fica
+            // possível, em vez de exigir um segundo aperto cronometrado.
+            if (jumpQueued && CanLauncherJumpCancel())
+            {
+                FireJumpTrigger();
+                jumpQueued = false;
+            }
+        }
+
+        private void FireJumpTrigger()
+        {
+            animator.SetTrigger(AnimStrings.Jump);
+            takeOffWatchdog = jumpTakeOffTimeout;
+        }
+
+        // "O launcher já conectou e ainda dá pra subir atrás do inimigo?"
+        //
+        // Attack1Alt2 é o único golpe cancelável por pulo. O piso de tempo
+        // existe porque o Animation Event que de fato levanta o inimigo
+        // (OnAttackHitLaunch) mora em 0.26 do clipe: cancelar antes disso
+        // trocaria o launcher por um pulo sem ninguém no ar pra perseguir.
+        private bool CanLauncherJumpCancel()
+        {
+            if (!AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt2))
+            {
+                return false;
+            }
+
+            // Crossfade de ENTRADA no launcher: o normalizedTime legível ainda
+            // é o do estado de origem e não diz nada sobre o golpe que está
+            // chegando — que está em ~0%, ou seja, muito antes da janela.
+            // Mesma pegadinha tratada em ComboWindowOpen().
+            if (animator.IsInTransition(0))
+            {
+                return false;
+            }
+
+            return animator.GetCurrentAnimatorStateInfo(0).normalizedTime >= launcherJumpCancelStart;
+        }
+
+        // Chamado pelo evento WeaponEquipController.JumpTakeOff (ver lá o
+        // porquê de não ser este método diretamente o alvo do Animation
+        // Event) e pelo watchdog acima, se o event nunca chegar.
+        private void ApplyJumpImpulse()
+        {
+            verticalVelocity = jumpForce;
+            airborne = true;
+            takeOffWatchdog = -1f;
         }
 
         // Mudança de design: Attack2Alt não é mais uma ação avulsa disparada
@@ -641,7 +748,7 @@ namespace Babel.Player
         // disparar.
         private void HandleStrongAttack()
         {
-            if (!IsAbilityModifierHeld() && weaponEquip != null && weaponEquip.IsWielded
+            if (weaponEquip != null && weaponEquip.IsWielded
                 && strongAttackAction.WasPressedThisFrame())
             {
                 strongComboQueued = true;
@@ -655,7 +762,7 @@ namespace Babel.Player
 
         // Só dispara em pé no chão — sem gate de IsAttacking() de propósito:
         // Dodge cancela qualquer ataque em andamento (Attack1/2/3,
-        // StrongAttack, SlideAttack), decisão explícita pra deixar o combate
+        // Attack2Alt), decisão explícita pra deixar o combate
         // mais ágil/Nier em vez de "comprometido" tipo Souls. As transições
         // de entrada em Dodge a partir de cada estado de ataque (Has Exit
         // Time off) são o que de fato torna isso possível no Animator — sem
@@ -702,6 +809,29 @@ namespace Babel.Player
             // disparado na hora logo acima, sem janela nenhuma; a decisão de
             // cancelar na hora fora dos golpes comprometidos não mudou.
             animator.SetBool(AnimStrings.DodgeQueued, dodgeQueued && ComboWindowOpen());
+
+            bool isDodging = IsDodging();
+
+            // Nier-style: o roll SEMPRE emenda num sprint, esteja você andando
+            // normal ou já sprintando antes de apertar — não precisa segurar o
+            // botão de sprint pra sair do dodge correndo.
+            //
+            // Escrito todo frame que `isDodging` for true, não só na borda de
+            // entrada: é só isso que HandleSprint() precisa, já que ele lê
+            // `sprinting` e escreve o bool Sprint no Animator sozinho todo
+            // frame — inclusive cancelando se o analógico for solto no meio ou
+            // depois do roll, mesma regra que já vale pro toggle manual. Não
+            // duplica lógica de cancelamento aqui.
+            //
+            // As saídas do Dodge pro Sprint/ArmedSprint no Animator não checam
+            // mais o bool Sprint pra decidir o destino (só IsWielded) —
+            // justamente pra ser ISTO aqui, e não o estado de antes do dodge, a
+            // decidir se você sai correndo.
+            if (isDodging)
+            {
+                sprinting = true;
+            }
+
             // Quem manda a UpperBody segurar/soltar o ArmedDodgeGrip.
             //
             // Antes esse estado saía só por Exit Time — mas o clipe dele
@@ -710,46 +840,7 @@ namespace Babel.Player
             // loop do idle, ou seja, ~0,8s DEPOIS da base layer já ter
             // saído do Dodge. Exit Time em clipe que faz loop nunca vai
             // sincronizar com outra layer; a saída tem que ser por condição.
-            animator.SetBool(AnimStrings.IsDodging, IsDodging());
-        }
-
-        // Heal dispara a animação; o efeito de cura em si vem de
-        // OnHealApplied (Animation Event no clipe "great sword power up
-        // (heal)", no frame em que o gesto "completa"). AttackMagic reusa
-        // PlayerAttackHitbox.OnAttackHitRadial via Animation Event direto
-        // no clipe "spell cast" — mesmo mecanismo já usado pelo giro do
-        // slide attack, sem precisar de código novo aqui. As actions já
-        // exigem L2 segurado via composite "Button With One Modifier" no
-        // InputActionAsset, então não precisa checar o modificador de novo
-        // aqui.
-        private void HandleAbilities()
-        {
-            if (IsAttacking())
-            {
-                return;
-            }
-
-            if (healAction.WasPressedThisFrame())
-            {
-                animator.SetTrigger(AnimStrings.Heal);
-            }
-
-            if (attackMagicAction.WasPressedThisFrame())
-            {
-                animator.SetTrigger(AnimStrings.AttackMagic);
-            }
-        }
-
-        // Animation Event (float = quantidade curada) no clipe de Heal.
-        // Auto-alvo — cura o próprio player direto no HealthComponent, sem
-        // OverlapSphere nenhum (diferente de OnAttackHit/OnAttackHitRadial,
-        // que miram em quem está na frente/em volta).
-        public void OnHealApplied(float amount)
-        {
-            if (health != null)
-            {
-                health.Heal(amount);
-            }
+            animator.SetBool(AnimStrings.IsDodging, isDodging);
         }
 
         // Resolve a escala de root motion do roll DESTE frame e devolve se o
@@ -838,46 +929,41 @@ namespace Babel.Player
 
             bool dodging = UpdateDodgeScale();
 
-            if (baseStateInfo.IsTag(AnimStrings.Dashing))
+            // O `&& !controller.isGrounded` não é redundante: dá pra pousar no
+            // MEIO de um ataque aéreo (o Animator tem saída por IsJumping pro
+            // JumpEnd, mas o golpe pode encostar no chão um frame antes dela
+            // resolver). Sem o gate, esse frame rodaria com gravidade
+            // suspensa e sem o -0.5 que gruda o CharacterController no chão —
+            // o suficiente pro isGrounded oscilar e o pouso engasgar.
+            bool airAttacking = IsAirAttacking() && !controller.isGrounded;
+
+            // Borda de ENTRADA do golpe aéreo: mata a velocidade de QUEDA, mas
+            // preserva a de SUBIDA.
+            //
+            // A versão anterior zerava as duas ("pra altura do combo não
+            // depender de quando você apertou"), e isso ficou ruim jogando:
+            // atacar logo depois de pular, ainda subindo forte, matava o
+            // impulso no meio e o personagem parava numa altura bem menor que
+            // a do pulo — lido como "meu personagem deu uma descida" e "não
+            // ataquei na altura que eu esperava". Ele não descia de verdade,
+            // só parava de subir de repente, que é visualmente parecido.
+            //
+            // Preservando a subida (e deixando a gravidade CHEIA agir nela até
+            // o ápice, ver o bloco de gravidade abaixo), o arco do pulo termina
+            // naturalmente e só então o hover assume — atacar cedo passa a dar
+            // o golpe no topo do pulo, que é onde a intuição manda.
+            if (airAttacking && !wasAirAttacking)
             {
-                // O clipe do dash foi importado com root motion baked out (fica in
-                // place) de propósito — o avanço rápido é inteiramente forçado aqui,
-                // não vem da animação, pra não depender de quão longe o Mixamo
-                // decidiu deslocar o personagem no clipe original. dashRampInTime
-                // evita o personagem deslizar em velocidade máxima antes da perna
-                // sair da pose de antecipação do início do clipe — é uma fração do
-                // tempo normalizado do próprio estado, então acompanha automaticamente
-                // se o Speed do estado no Animator mudar.
-                float rampT = dashRampInTime > 0f
-                    ? Mathf.Clamp01(baseStateInfo.normalizedTime / dashRampInTime)
-                    : 1f;
-                rootMotionPosition = transform.forward * dashSpeed * rampT * Time.deltaTime;
+                // O lift é somado DEPOIS do clamp, não antes: somar primeiro
+                // faria uma queda rápida (velocidade bem negativa) engolir o
+                // empurrão inteiro e o golpe sairia sem lift nenhum justo no
+                // caso em que ele é mais necessário.
+                verticalVelocity = Mathf.Max(verticalVelocity, 0f) + airAttackLift;
             }
-            else if (baseStateInfo.IsName(AnimStrings.SlideAttack))
-            {
-                // Mesma técnica do dash — clipe importado com root motion baked out,
-                // avanço forçado aqui. Não dá pra usar tag pra identificar esse
-                // estado (a tag já é "Attack", precisa dela pro IsAttacking()/combo),
-                // então checa por nome do estado em vez de tag. O deslize só cobre a
-                // parte inicial do clipe (o avanço em si), com ramp-in no começo e
-                // ramp-out terminando exatamente em slideAttackActiveEnd — depois
-                // disso é só o golpe parado, sem movimento forçado nenhum.
-                if (baseStateInfo.normalizedTime <= slideAttackActiveEnd)
-                {
-                    float rampIn = slideAttackRampInTime > 0f
-                        ? Mathf.Clamp01(baseStateInfo.normalizedTime / slideAttackRampInTime)
-                        : 1f;
-                    float rampOut = slideAttackRampOutTime > 0f
-                        ? Mathf.Clamp01((slideAttackActiveEnd - baseStateInfo.normalizedTime) / slideAttackRampOutTime)
-                        : 1f;
-                    rootMotionPosition = transform.forward * slideAttackSpeed * rampIn * rampOut * Time.deltaTime;
-                }
-                else
-                {
-                    rootMotionPosition = Vector3.zero;
-                }
-            }
-            else if (controller.isGrounded)
+
+            wasAirAttacking = airAttacking;
+
+            if (controller.isGrounded)
             {
                 // Também cobre o Dodge (root motion do clipe "Standing Dodge
                 // Forward", sem deslocamento forçado por código — só um
@@ -915,10 +1001,8 @@ namespace Babel.Player
                     rootMotionPosition *= dodgeScale;
                 }
 
-                // Avanço extra dos ataques, SOMADO ao root motion (não
-                // substituindo ele, ao contrário do dash e do SlideAttack acima,
-                // cujos clipes foram importados in place justamente pra serem
-                // 100% forçados por código). Aqui o clipe continua mandando no
+                // Avanço extra dos ataques, SOMADO ao root motion, não
+                // substituindo ele. Aqui o clipe continua mandando no
                 // deslocamento base; a curva só preenche o que falta pro golpe
                 // "avançar" de verdade, porque os clipes de ataque atuais quase
                 // não saem do lugar.
@@ -933,11 +1017,35 @@ namespace Babel.Player
                 //
                 // Depois do lastGroundedSpeed de propósito: aquilo alimenta o
                 // impulso horizontal do salto, e ataque não deve virar
-                // velocidade de decolagem (nem dá pra pular atacando — HandleJump
-                // exige !IsAttacking()); contaminar a medição só criaria um pico
-                // fantasma difícil de rastrear.
+                // velocidade de decolagem; contaminar a medição só criaria um
+                // pico fantasma difícil de rastrear.
+                //
+                // Isso deixou de ser teórico: desde o cancel do launcher
+                // (HandleJump não exige mais !IsAttacking() cru) DÁ pra decolar
+                // de dentro de um golpe. O lunge do Attack1Alt2 no frame do
+                // cancel viraria velocidade horizontal de pulo se estivesse
+                // somado antes desta linha.
                 rootMotionPosition += transform.forward
                     * animator.GetFloat(AnimStrings.Lunge) * lungeScale * Time.deltaTime;
+            }
+            else if (airAttacking)
+            {
+                // Ataque aéreo: aqui o root motion do PRÓPRIO clipe manda, ao
+                // contrário do resto do voo logo abaixo. Os dois clipes são
+                // _Root e o avanço deles é autorado como parte do golpe;
+                // arrastar o personagem na velocidade em que ele estava
+                // correndo antes de pular passaria por cima disso.
+                Vector3 localRootMotion = Quaternion.Inverse(transform.rotation) * animator.deltaPosition;
+                localRootMotion.x = 0f;
+                localRootMotion.y = 0f;
+                rootMotionPosition = transform.rotation * localRootMotion;
+
+                // O golpe aéreo ANCORA o player: o resto da queda, depois que
+                // ele terminar, é vertical. Sem isto o branch de ar lá embaixo
+                // retomaria a velocidade de corrida guardada na decolagem e o
+                // personagem sairia deslizando pra frente no fim do combo,
+                // saindo de cima do inimigo que ele acabou de pendurar.
+                lastGroundedSpeed = 0f;
             }
             else
             {
@@ -959,6 +1067,33 @@ namespace Babel.Player
             if (controller.isGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = -0.5f;
+            }
+            else if (airAttacking && verticalVelocity > 0f)
+            {
+                // AINDA SUBINDO: gravidade CHEIA, como num pulo normal. O
+                // hangtime não começa aqui — deixa o arco do salto terminar
+                // primeiro, senão atacar cedo congelaria o player no meio da
+                // subida (ver o comentário da borda de entrada lá em cima).
+                //
+                // Clampa em 0 em vez de deixar passar pra negativo: é o ponto
+                // exato em que a subida vira hover, e passar direto daria um
+                // frame de queda antes do branch de baixo assumir.
+                verticalVelocity = Mathf.Max(0f, verticalVelocity - gravity * Time.deltaTime);
+            }
+            else if (airAttacking)
+            {
+                // Já no ápice (ou entrou no golpe caindo, e a borda de entrada
+                // zerou a queda): agora sim o hangtime. Com
+                // airAttackGravityScale em 0 ele trava nessa altura até o
+                // ataque acabar.
+                //
+                // Só integra a fração de gravidade — não zera nada aqui. Fazer
+                // as duas coisas no mesmo lugar (zerar todo frame e depois
+                // subtrair) daria uma velocidade CONSTANTE em vez de uma
+                // aceleração: com scale 0.2 o player desceria numa taxa fixa,
+                // sem nunca ganhar peso, que é o oposto de "um pouco de
+                // gravidade".
+                verticalVelocity -= gravity * airAttackGravityScale * Time.deltaTime;
             }
             else
             {

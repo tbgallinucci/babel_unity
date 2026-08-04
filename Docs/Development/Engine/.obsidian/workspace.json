@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Planning/Guide - Inimigo Warrok (Fase 3).md",
+                "file": "Planning/Guide - Combate Aereo (Passo a Passo do Animator).md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Guide - Inimigo Warrok (Fase 3)"
+              "title": "Guide - Combate Aereo (Passo a Passo do Animator)"
             }
           }
         ]
@@ -187,6 +187,8 @@
   },
   "active": "66705ce1a1b6f980",
   "lastOpenFiles": [
+    "Planning/Guide - Combate Aereo (Passo a Passo do Animator).md.tmp.32112.5f75173f1b5f",
+    "Planning/Guide - Inimigo Warrok (Fase 3).md",
     "Planning/Guide - Robustez e Data-Driven do Combate.md",
     "Planning/Guide - Vida, Dano e Inimigo de Teste.md",
     "Planning/Status - Estado Atual e Pendencias.md",

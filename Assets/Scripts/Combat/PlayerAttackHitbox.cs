@@ -4,7 +4,7 @@ namespace Babel.Combat
 {
     // Detecção de acerto dos ataques do player: um Animation Event
     // (OnAttackHit) no frame de impacto de cada clipe de ataque (Attack1/2/3,
-    // Attack2Alt, SlideAttack) dispara um OverlapSphere CENTRADO NO PLAYER,
+    // Attack2Alt) dispara um OverlapSphere CENTRADO NO PLAYER,
     // filtrado por ângulo em relação ao forward — na prática, uma fatia de
     // pizza na frente do personagem, não um ponto isolado. Precisa estar no
     // MESMO GameObject do Animator — Animation Events despacham SendMessage
@@ -37,6 +37,34 @@ namespace Babel.Combat
         // maior que hitRadius de propósito: um giro de 360° tem que pegar
         // quem está em volta, não só quem está no alcance do swing pra frente.
         [SerializeField] private float radialHitRadius = 3f;
+        // Velocidade vertical inicial do launcher (OnAttackHitLaunch). Com a
+        // launchGravity padrão do KnockbackReceiver (18), 12 dá ~4m de altura
+        // de pico e ~1.33s de voo. Altura = f²/(2*g), voo = 2*f/g — vale ter
+        // em mente que dobrar a força QUADRUPLICA a altura.
+        //
+        // O alvo NÃO é "o mais alto possível": é ficar um pouco acima do ápice
+        // do player (~3.75m com jumpForce 15 / gravity 30), porque o combo
+        // aéreo acontece no encontro dos dois arcos. Valores testados que não
+        // funcionaram, e por quê:
+        //   6  — voo de só 0.67s; o inimigo pousava antes do player sequer
+        //        decolar (contando o tempo até a janela de cancel abrir).
+        //   15 — voo longo, mas ápice de 6.25m: o inimigo passa MUITO acima do
+        //        alcance do player e o encontro nunca acontece por cima.
+        //
+        // Já estava tunado na cena — igual jumpForce, o valor salvo no
+        // Inspector do objeto real não muda sozinho, precisa editar lá
+        // também.
+        [SerializeField] private float launchUpwardForce = 12f;
+        // Quanto tempo o alvo fica pendurado na altura em que está a cada
+        // acerto do combo AÉREO (ver OnAirAttackHit e
+        // KnockbackReceiver.ApplyAirHold). É o espelho, do lado do inimigo, do
+        // PlayerController.airAttackGravityScale — os dois juntos é que fazem
+        // "o golpe aéreo mantém os dois no ar".
+        //
+        // Calibrar contra a duração dos clipes aéreos: o hold precisa cobrir o
+        // resto do golpe atual mais a entrada do próximo, senão o alvo retoma a
+        // queda entre um hit e outro e o segundo golpe passa por cima dele.
+        [SerializeField] private float airHoldTime = 0.35f;
         // Hit-stop, em FRAMES de 60fps (é assim que se autora peso de golpe;
         // ver HitStop.ReferenceFps), disparado só quando o golpe acerta
         // alguém — errar não congela nada.
@@ -74,7 +102,47 @@ namespace Babel.Combat
         public void OnAttackHit(AnimationEvent evt)
         {
             Vector3 origin = transform.position + Vector3.up * hitHeight;
-            ApplyHit(origin, hitRadius, hitAngle, evt, radial: false);
+            ApplyHit(origin, hitRadius, hitAngle, evt, radial: false, upwardForce: 0f);
+        }
+
+        // Mesma geometria do OnAttackHit (cone frontal), mas o alvo é JOGADO
+        // PRA CIMA em vez de só empurrado — o launcher de juggle. Usado hoje
+        // pelo Attack1Alt2.
+        //
+        // Função própria pelo mesmo motivo do OnAttackHitRadial: não é um
+        // número diferente, é comportamento diferente do lado do alvo (arco
+        // balístico com duração derivada da força, ver
+        // KnockbackReceiver.ApplyLaunch). Também deixa óbvio na janela de
+        // Animation dele qual golpe levanta e qual não, sem ter que abrir o
+        // Inspector do hitbox pra descobrir.
+        //
+        // A força vertical vem de campo serializado e não do AnimationEvent
+        // porque os dois parâmetros do evento já estão ocupados (Float = dano,
+        // Int = push horizontal) e o Unity não oferece um terceiro numérico. Se
+        // um dia mais de um golpe precisar levantar com alturas diferentes,
+        // isso vira dado do golpe (WeaponMoveset), não mais um campo aqui.
+        public void OnAttackHitLaunch(AnimationEvent evt)
+        {
+            Vector3 origin = transform.position + Vector3.up * hitHeight;
+            ApplyHit(origin, hitRadius, hitAngle, evt, radial: false, upwardForce: launchUpwardForce);
+        }
+
+        // Os dois ataques leves aéreos. Mesma geometria de cone do OnAttackHit
+        // — o que muda é o que acontece com o alvo DEPOIS do dano: ele fica
+        // pendurado na altura em que está por airHoldTime, em vez de continuar
+        // a queda do arco do launcher.
+        //
+        // Função própria e não um OnAttackHitLaunch com força menor porque a
+        // diferença é de espécie, não de grau: launch DÁ velocidade pra cima e
+        // empilha (dois launches seguidos sobem o dobro), hold CONGELA a altura
+        // atual e não empilha. Repetir o launcher a cada hit do combo aéreo
+        // faria o inimigo escalar até sair do alcance por cima — ver o
+        // comentário de ApplyAirHold.
+        public void OnAirAttackHit(AnimationEvent evt)
+        {
+            Vector3 origin = transform.position + Vector3.up * hitHeight;
+            ApplyHit(origin, hitRadius, hitAngle, evt, radial: false, upwardForce: 0f,
+                airHold: airHoldTime);
         }
 
         // Golpe radial 360°: esfera centrada NO PLAYER e bem maior, pra
@@ -88,10 +156,11 @@ namespace Babel.Combat
         public void OnAttackHitRadial(AnimationEvent evt)
         {
             Vector3 origin = transform.position + Vector3.up * hitHeight;
-            ApplyHit(origin, radialHitRadius, 360f, evt, radial: true);
+            ApplyHit(origin, radialHitRadius, 360f, evt, radial: true, upwardForce: 0f);
         }
 
-        private void ApplyHit(Vector3 origin, float radius, float angle, AnimationEvent evt, bool radial)
+        private void ApplyHit(Vector3 origin, float radius, float angle, AnimationEvent evt,
+            bool radial, float upwardForce, float airHold = 0f)
         {
             float damage = evt.floatParameter;
             float pushForce = evt.intParameter;
@@ -158,7 +227,18 @@ namespace Babel.Combat
                         ? hit.transform.position - transform.position
                         : transform.forward;
 
-                    knockback.ApplyKnockback(pushDirection, pushForce);
+                    // ApplyLaunch com upwardForce 0 recai no empurrão normal,
+                    // então não precisa de if aqui — só o launcher passa valor.
+                    knockback.ApplyLaunch(pushDirection, pushForce, upwardForce);
+
+                    // Depois do push de propósito: o ApplyKnockback embutido no
+                    // ApplyLaunch (o caminho de upwardForce 0, que é o dos
+                    // golpes aéreos) devolve cedo quando o alvo já está voando,
+                    // preservando o arco — mas ele não sabe nada de hang. Quem
+                    // segura é esta chamada, e ela ignora sozinha quem não está
+                    // no ar, então acertar um inimigo em pé com um golpe aéreo
+                    // continua sendo só um empurrão normal.
+                    knockback.ApplyAirHold(airHold);
                 }
             }
         }

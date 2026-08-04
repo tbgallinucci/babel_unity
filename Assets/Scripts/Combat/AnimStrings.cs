@@ -27,9 +27,20 @@ namespace Babel.Combat
         public const string Speed = "Speed";
         public const string Sprint = "Sprint";
         public const string Jump = "Jump";
-        public const string JumpAttack = "JumpAttack";
-        public const string JumpAttackLand = "JumpAttackLand";
-        public const string IsJumpAttacking = "IsJumpAttacking";
+        // "O player está no ar?" — bool, escrito todo frame pelo
+        // PlayerController. NÃO é `!controller.isGrounded` cru: é um latch
+        // aberto pelo Animation Event de decolagem e fechado no pouso (ver
+        // PlayerController.airborne), porque durante o windup do Jump Start os
+        // pés ainda estão no chão e o valor cru diria "no chão" com o pulo já
+        // em andamento.
+        //
+        // O parâmetro já existia no controller, órfão do jump attack antigo:
+        // lido por quatro transições e escrito por ninguém, então valia false
+        // pra sempre e as condições `IsJumping == false` passavam sempre. Duas
+        // delas são exatamente o que o combate aéreo precisa (UpperBody
+        // Empty -> Draw/Sheath: não dá pra sacar/guardar a arma no ar) e
+        // passam a funcionar de graça agora que alguém escreve o valor.
+        public const string IsJumping = "IsJumping";
         public const string Dodge = "Dodge";
         public const string DodgeQueued = "DodgeQueued";
         public const string IsDodging = "IsDodging";
@@ -37,9 +48,6 @@ namespace Babel.Combat
         public const string StrongComboQueued = "StrongComboQueued";
         public const string AttackQueued = "AttackQueued";
         public const string IsAttacking = "IsAttacking";
-        public const string IsSliding = "IsSliding";
-        public const string Heal = "Heal";
-        public const string AttackMagic = "AttackMagic";
         // Único parâmetro aqui que NÃO é escrito por código: quem dirige o
         // valor é uma curva chamada "Lunge" dentro de cada clipe de ataque
         // (Import Settings -> Animation -> Curves). O C# só lê
@@ -55,15 +63,19 @@ namespace Babel.Combat
         // uma constante só.
         public const string Attack = "Attack";
         public const string Dodging = "Dodging";
-        public const string Dashing = "Dashing";
 
         // -- Nomes de estado ----------------------------------------------------
-        public const string SlideAttack = "SlideAttack";
         public const string Attack1Alt1 = "Attack1Alt1";
         public const string Attack1Alt2 = "Attack1Alt2";
         public const string Attack2Alt = "Attack2Alt";
-        public const string Attack2AltTail = "Attack2AltTail";
-        public const string ArmedJumpAttack2Alt = "ArmedJumpAttack2Alt";
+        // Os dois ataques aéreos. Identificados por NOME e não por tag pelo
+        // mesmo motivo já documentado no Attack2Alt: a tag deles
+        // precisa continuar sendo "Attack" (é o que faz IsAttacking(), a trava
+        // de rotação, o congelamento do Speed e o bloqueio de Draw/Sheath
+        // valerem no ar sem nenhuma mudança), e um estado do Unity só tem UMA
+        // tag — não dá pra ser "Attack" e "AirAttack" ao mesmo tempo.
+        public const string AirAttack1 = "AirAttack1";
+        public const string AirAttack2 = "AirAttack2";
 
         // -- Layers -------------------------------------------------------------
         public const string UpperBody = "UpperBody";

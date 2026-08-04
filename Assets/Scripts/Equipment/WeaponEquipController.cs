@@ -1,3 +1,4 @@
+using System;
 using Babel.Combat;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -41,19 +42,19 @@ namespace Babel.Equipment
         [SerializeField] private string drawingTag = "WeaponDrawing";
         [SerializeField] private string sheathingTag = "WeaponSheathing";
         [SerializeField] private string attackTag = "Attack";
-        // Jump/ArmedJumpGrip não têm transição de saída pro Draw/Sheath — sem
-        // esse bloqueio, o trigger dispara, currentState já muda (derrubando
-        // IsWielded antes da hora), mas a UpperBody nunca sai do grip pra tocar
-        // o gesto nem disparar o Animation Event que move a espada de socket.
+        // Jump não tem transição de saída pro Draw/Sheath — sem esse
+        // bloqueio, o trigger dispara, currentState já muda (derrubando
+        // IsWielded antes da hora), mas a base layer nunca sai do pulo pra
+        // tocar o gesto nem disparar o Animation Event que move a espada de
+        // socket.
+        //
+        // Só a tag basta hoje: os clipes de pulo (JumpStart/AirLoop/JumpEnd)
+        // já são do animset armado, então a UpperBody fica em Empty o tempo
+        // todo durante o pulo — igual já acontece durante os ataques de chão
+        // — e não existe mais nenhuma pose própria da UpperBody (o extinto
+        // ArmedJumpGrip) que pudesse ficar defasada da base layer no pouso.
         [SerializeField] private string jumpingTag = "Jumping";
-        // A UpperBody sai de ArmedJumpGrip pelo próprio Exit Time dela, que não
-        // está sincronizado com o pouso real da layer base — existe uma janela
-        // onde a tag Jumping já sumiu mas a UpperBody ainda não terminou de sair
-        // do grip. Checar o nome do estado da UpperBody também fecha essa
-        // corrida (senão o trigger pode disparar sem ter transição pra
-        // consumir bem nesse instante).
-        [SerializeField] private string armedJumpGripStateName = "ArmedJumpGrip";
-        // Mesmo racional do Jump/ArmedJumpGrip acima, aplicado ao Dodge —
+        // Mesmo racional do Jump acima, aplicado ao Dodge —
         // sem esse bloqueio, dava pra sacar/guardar a arma no meio do roll,
         // o que também explica travamentos: o trigger Draw/Sheath dispara,
         // currentState já muda, mas não tem transição de ArmedDodgeGrip pra
@@ -304,8 +305,7 @@ namespace Babel.Equipment
         // lugar só). Ver o comentário de lá pro racional completo.
         private bool IsJumping()
         {
-            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, jumpingTag)
-                || AnimatorStateUtil.HasStateNowOrIncoming(animator, weaponLayerIndex, armedJumpGripStateName);
+            return AnimatorStateUtil.HasTagNowOrIncoming(animator, 0, jumpingTag);
         }
 
         private bool IsDodging()
@@ -355,6 +355,26 @@ namespace Babel.Equipment
         public void OnWeaponSheathed()
         {
             SnapWeaponTo(sheathSocket);
+        }
+
+        // Animation Event no clipe "Jump Start" (Base Layer), no frame em que
+        // os pés deixam o chão — mesmo se tivesse pra decolagem que
+        // OnWeaponGrabbed/OnWeaponSheathed já têm pro draw/sheath, só que quem
+        // precisa saber do resultado (o impulso vertical) é o
+        // PlayerController, não este componente.
+        //
+        // Existe SÓ por causa da regra de SendMessage: Animation Events
+        // disparam contra o GameObject do Animator, que é este aqui (o filho
+        // do rig), não a raiz onde mora o PlayerController — mesmo motivo já
+        // documentado no cabeçalho da classe pro Draw/Sheath. Repassar por
+        // evento em vez de o PlayerController virar dependência deste
+        // componente (ou vice-versa) preserva a direção de dependência que já
+        // existe no projeto: Player conhece Equipment, não o contrário.
+        public event Action JumpTakeOff;
+
+        public void OnJumpTakeOff()
+        {
+            JumpTakeOff?.Invoke();
         }
 
         private void SnapWeaponTo(Transform socket)

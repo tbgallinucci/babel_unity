@@ -30,7 +30,7 @@ namespace Babel.Combat
         }
 
         // Mesma ideia, por NOME de estado — pra estados que compartilham tag
-        // com outros de propósito (Attack2Alt/SlideAttack reusam a tag
+        // com outros de propósito (Attack2Alt e os AirAttack reusam a tag
         // "Attack" pro IsAttacking()/combo funcionarem sem mudança).
         public static bool HasStateNowOrIncoming(Animator animator, int layer, string stateName)
         {
