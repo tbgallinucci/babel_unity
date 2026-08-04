@@ -22,7 +22,33 @@ namespace Babel.Combat
         // afinar "peso" de juggle sem mexer na gravidade do mundo, que é o que
         // se quer na prática: launcher bom costuma usar gravidade MAIOR que a
         // real, pra subir rápido e cair rápido sem ficar flutuando.
-        [SerializeField] private float launchGravity = 18f;
+        //
+        // 18 era baixo demais e o sintoma foi relatado em teste: "o monstro
+        // sobe em velocidade constante, perdeu a sensação de launch". A
+        // desaceleração É o launch — é ela que comunica que algo jogou o
+        // inimigo pra cima em vez dele estar sendo carregado. Com gravidade
+        // baixa a velocidade cai devagar demais pra leitura acontecer dentro
+        // do tempo do arco.
+        //
+        // Mesma lição que a gravity do PlayerController (9.81 -> 30): num arco
+        // balístico, quem dá PESO é a gravidade, não a velocidade inicial.
+        // Subir a força sem subir a gravidade só deixa tudo mais flutuante e
+        // mais alto.
+        [SerializeField] private float launchGravity = 40f;
+        // Quanto tempo o alvo fica PARADO no ápice do arco de launch antes de
+        // começar a cair. É o "hangtime" clássico de juggle: sem ele o ápice é
+        // um instante matemático (a velocidade cruza zero e já inverte), e o
+        // alvo nunca parece flutuar — só sobe e desce.
+        //
+        // Vale só pro ápice e só uma vez por launch: relançar reinicia a
+        // contagem, mas um mesmo arco não pendura duas vezes. Diferente do
+        // ApplyAirHold, que é disparado por golpe (cada acerto aéreo segura o
+        // alvo onde ele estiver) — este é automático e faz parte do arco.
+        //
+        // Aumenta o tempo total de voo em exatamente este valor, então mexer
+        // aqui afrouxa a janela do juggle sem mudar a ALTURA (ao contrário de
+        // subir launchUpwardForce, que muda as duas coisas de uma vez).
+        [SerializeField] private float apexHangTime = 0.5f;
 
         private Rigidbody rb;
         private Vector3 knockbackVelocity;
@@ -38,6 +64,11 @@ namespace Babel.Combat
         // maior que zero, o arco congela na altura atual em vez de integrar
         // gravidade.
         private float hangRemaining;
+        // Trava do hang de ápice (ver apexHangTime): garante uma pendurada só
+        // por arco. Sem isso, qualquer flutuação numérica em torno de
+        // velocidade zero durante o próprio hang re-disparia o efeito e o alvo
+        // ficaria preso no ar pra sempre.
+        private bool apexHangUsed;
 
         // Pra quem mais tenta escrever transform.position no mesmo objeto
         // (ex.: EnemyBase dirigindo um NavMeshAgent) saber quando ceder o
@@ -45,6 +76,13 @@ namespace Babel.Combat
         // não sabe nada de NavMeshAgent, só expõe "ainda tenho um push
         // rolando"; a coordenação é responsabilidade de quem consome isso.
         public bool IsActive => remaining > 0f;
+
+        // Mais específico que o IsActive: "está VOANDO", não só "tem um push
+        // rolando". Um empurrão normal no chão também deixa IsActive true, e
+        // quem precisa saber disso (a IA, pra se desligar) só se importa com o
+        // caso aéreo — durante um push de chão o inimigo pode continuar
+        // pensando normalmente.
+        public bool IsAirborne => launching;
 
         private void Awake()
         {
@@ -114,6 +152,8 @@ namespace Babel.Combat
             // relançar alguém pendurado seria engolido: o FixedUpdate veria
             // hangRemaining > 0 e zeraria a velocidade que acabou de ser dada.
             hangRemaining = 0f;
+            // Arco novo, ápice novo — o relance ganha a própria pendurada.
+            apexHangUsed = false;
 
             // Altura de origem, pra cravar o pouso exatamente onde decolou. O
             // alvo anda em NavMesh plana, então "o chão" é o Y de onde saiu —
@@ -184,6 +224,27 @@ namespace Babel.Combat
             else if (launching)
             {
                 verticalVelocity -= launchGravity * Time.fixedDeltaTime;
+
+                // Ápice: a velocidade acabou de cruzar de subindo pra caindo.
+                // Segura aqui em vez de deixar inverter na hora — é o que faz
+                // o alvo FLUTUAR no topo em vez de só trocar de direção.
+                //
+                // Cravar verticalVelocity em 0 junto é o que garante que a
+                // queda comece do repouso quando o hang terminar; sem isso o
+                // resto do frame (que já ficou negativo) seria devolvido
+                // depois, e o alvo sairia da pendurada com um tranco.
+                if (!apexHangUsed && apexHangTime > 0f && verticalVelocity <= 0f)
+                {
+                    apexHangUsed = true;
+                    verticalVelocity = 0f;
+                    hangRemaining = apexHangTime;
+                    // O orçamento de tempo do arco (2v/g, calculado no
+                    // ApplyLaunch) não previa a pausa — sem estender, o voo
+                    // expiraria durante ela e o alvo seria cravado no chão do
+                    // ápice, teleportado.
+                    remaining += apexHangTime;
+                }
+
                 delta = (knockbackVelocity + Vector3.up * verticalVelocity) * Time.fixedDeltaTime;
             }
             else
@@ -206,6 +267,7 @@ namespace Babel.Combat
                 launching = false;
                 verticalVelocity = 0f;
                 hangRemaining = 0f;
+                apexHangUsed = false;
             }
 
             // Kinematic não sofre resposta a colisão — MovePosition atravessa

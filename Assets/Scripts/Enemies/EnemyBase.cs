@@ -23,7 +23,7 @@ namespace Babel.Enemies
     [RequireComponent(typeof(HitFlash))]
     public class EnemyBase : MonoBehaviour
     {
-        private enum State { Idle, Roam, Chase, Attack, JumpAttack, Hit, Dead }
+        private enum State { Idle, Roam, Chase, Attack, JumpAttack, Hit, Airborne, Dead }
 
         // Precisa bater com o m_Name do estado de locomoção no
         // EnemyAnimatorController — usado só pra saber quando Attack/Hit
@@ -86,6 +86,11 @@ namespace Babel.Enemies
         private static readonly int AttackHash = Animator.StringToHash("Attack");
         private static readonly int JumpAttackHash = Animator.StringToHash("JumpAttack");
         private static readonly int HitHash = Animator.StringToHash("Hit");
+        // Bool, não trigger: o tempo no ar é físico (o arco do
+        // KnockbackReceiver), não a duração de um clipe. Mesmo raciocínio do
+        // IsJumping do player — quem segura o estado é a condição, não um Exit
+        // Time que não tem como saber quando o alvo pousa.
+        private static readonly int AirborneHash = Animator.StringToHash("Airborne");
 
         private void Awake()
         {
@@ -157,6 +162,33 @@ namespace Babel.Enemies
 
             SyncAgentWithKnockback();
 
+            // NO AR a IA inteira fica suspensa — antes de qualquer Tick, e
+            // acima até dos golpes comprometidos.
+            //
+            // Sem isso o inimigo continuava pensando enquanto flutuava, e
+            // vários caminhos da IA escrevem posição por conta própria,
+            // atropelando o arco do KnockbackReceiver e cravando ele no chão:
+            // TickJumpAttack faz transform.position = Lerp(...) com um
+            // landingPoint amostrado na NavMesh, TickAttack e
+            // SyncAgentWithKnockback chamam agent.Warp() (que gruda na
+            // NavMesh), e HandleJumpAttackLanded crava em landingPoint. Bastava
+            // ele decidir atacar no meio do juggle pra teleportar pro chão.
+            //
+            // Vale mesmo durante Attack/JumpAttack: a hyper armor do
+            // HandleDamaged impede a reação de Hit, mas não impede o launcher
+            // de erguer o inimigo, e um jump attack continuando no ar é
+            // justamente o pior caso.
+            if (knockback.IsAirborne)
+            {
+                EnterAirborne();
+                return;
+            }
+
+            if (state == State.Airborne)
+            {
+                ExitAirborne();
+            }
+
             // Golpes comprometidos (Attack/JumpAttack) e a reação de Hit
             // não reavaliam aggro no meio — terminam o que começaram.
             if (state != State.Attack && state != State.JumpAttack && state != State.Hit)
@@ -211,6 +243,53 @@ namespace Babel.Enemies
                 agent.updatePosition = true;
                 agent.updateRotation = true;
             }
+        }
+
+        // Idempotente — chamado todo frame enquanto o inimigo estiver voando,
+        // mas só faz trabalho na primeira vez.
+        private void EnterAirborne()
+        {
+            if (state == State.Airborne)
+            {
+                return;
+            }
+
+            // Tira o agent da equação por completo, mesma técnica do
+            // BeginAttack/BeginJumpAttack. Sem updatePosition = false o agent
+            // reescreveria a posição na NavMesh (chão) todo frame, brigando
+            // com o arco.
+            agent.isStopped = true;
+            agent.updatePosition = false;
+            agent.updateRotation = false;
+
+            // Um jump attack interrompido no meio deixaria o disco do
+            // telegraph parado no chão pra sempre — ninguém mais vai chamar
+            // HandleJumpAttackLanded pra escondê-lo.
+            if (telegraph != null)
+            {
+                telegraph.Hide();
+            }
+
+            animator.SetBool(AirborneHash, true);
+            state = State.Airborne;
+        }
+
+        private void ExitAirborne()
+        {
+            animator.SetBool(AirborneHash, false);
+
+            // Sem Warp nem updatePosition aqui de propósito: o
+            // SyncAgentWithKnockback já faz isso no frame em que o knockback
+            // termina (IsActive vira false), e ele roda ANTES deste método no
+            // Update. Duplicar só criaria dois donos pro mesmo resync. O
+            // isStopped abaixo é a exceção — aquele foi ligado pelo
+            // EnterAirborne, então tem que ser desligado aqui, ou o inimigo
+            // pousa e fica parado sem nunca voltar a perseguir.
+            agent.isStopped = false;
+
+            state = player != null && Vector3.Distance(transform.position, player.position) <= aggroRadius
+                ? State.Chase
+                : State.Idle;
         }
 
         private void TickAggro()
@@ -446,7 +525,14 @@ namespace Babel.Enemies
         // (mesmo espírito do IsInCommittedAttack() do Player).
         private void HandleDamaged(float current, float max)
         {
-            if (state == State.Attack || state == State.JumpAttack || state == State.Dead)
+            // Airborne entra na mesma lista de "não reage": os golpes do combo
+            // aéreo acertam justamente enquanto ele está pendurado, e disparar
+            // o Hit ali brigaria com o estado aéreo pelo controle do Animator —
+            // o inimigo piscaria entre a pose de dano e a de voo a cada acerto.
+            // O feedback de estar apanhando no ar fica por conta do HitFlash e
+            // do hit stop, que não dependem de estado do Animator.
+            if (state == State.Attack || state == State.JumpAttack
+                || state == State.Airborne || state == State.Dead)
             {
                 return;
             }

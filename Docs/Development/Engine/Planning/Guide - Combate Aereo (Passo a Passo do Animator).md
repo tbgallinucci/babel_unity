@@ -30,19 +30,52 @@ causa.
 | `Air.FBX` | **Loop Time ✔** e **Loop Pose ✔** | Está com `loopTime: 0`. Sem isso o estado toca os 48 frames uma vez e **congela no último frame** — e como a saída dele é por condição (não tem Exit Time), ele congela até você pousar. |
 | `Jump Start.FBX` | Loop Time ✗ (já está) | — |
 | `Jump End.FBX` | Loop Time ✗ (já está) | — |
-### Bake Into Pose em Y: MANTER marcado (testado)
+### Bake Into Pose em Y: a regra é POR TIPO DE CLIPE
 
-Uma versão anterior deste guia mandou desmarcar `Root Transform Position (Y)
-→ Bake Into Pose` nos três clipes, com o argumento de que o código descarta
-root motion vertical de qualquer jeito, então desmarcar deixaria a altura
-"100% física". **Testado em jogo: ficou pior, reverter.** Desmarcar tira o
-deslocamento vertical da pose e o clipe passa a depender de um root que
-ninguém move — o resultado visual quebra.
+Não existe resposta única aqui — uma versão anterior deste guia tentou as duas
+respostas globais e as duas estavam erradas em metade dos casos. O que os
+testes fecharam (2026-08-03):
 
-Fica **marcado** (`loopBlendPositionY: 1`, como já vem). O efeito colateral é
-real e conhecido: o movimento vertical do clipe fica no visual, então o modelo
-tem um bob próprio somado à física. Onde isso incomodou, os consertos que
-funcionaram foram outros — ver `AirLoop` no passo 4 e `airAttackLift` abaixo.
+| Clipes | `Root Transform Position (Y) → Bake Into Pose` | Por quê |
+|---|---|---|
+| `Jump Start`, `Air`, `Jump End` | **marcado** (como já vem) | desmarcar tira o deslocamento vertical da pose e o clipe passa a depender de um root que o código nunca move — visual quebrado |
+| `GreatSword_Air_Attack01/02_Root` | **desmarcado** | marcado, o swing afunda o corpo no visual, e nenhum ajuste de física corrige (não é velocidade, é pose). Desmarcar resolveu a queda ao atacar no ar |
+
+A diferença é o que cada clipe usa a altura pra fazer. Nos de pulo, o
+movimento vertical **é** a animação (agachar, estender, cair) e precisa
+aparecer. Nos de ataque, o deslocamento vertical é incidental — sobra do
+contexto em que foram capturados — e só atrapalha, porque a altura durante o
+golpe é decidida por `airAttackGravityScale`.
+
+O `Dodge Greatsword` entrou depois no mesmo grupo dos ataques (**desmarcado**),
+pelo mesmo motivo e com o mesmo ganho: movimentação mais livre no chão e mais
+responsiva no ar.
+
+### O efeito colateral de desmarcar: pé afundando no chão
+
+Desmarcar *Bake Into Pose* em Y tira a altura da pose, e aí a posição vertical
+do corpo passa a depender de onde o root está — que o nosso código mantém
+fixo. Se o clipe foi autorado com o quadril mais baixo que o "neutro" em
+algum trecho, os pés atravessam o piso ali.
+
+O conserto é o campo **`Offset`** da mesma seção (`level` no `.meta`, começa em
+0): um valor positivo pequeno levanta o clipe inteiro. Começar em **0.02** e
+subir até o pé parar de entrar — passando do ponto, o personagem flutua.
+
+**Duas saídas que NÃO funcionam** (as duas testadas, 2026-08-03):
+
+- **`Based Upon (at Start) = Feet`** — piorou. `Based Upon` escolhe *como
+  renormalizar o clipe inteiro*, e num slide, onde os pés deslizam e saem do
+  chão, os pés são justamente a pior referência possível. Fica em `Original`.
+- **Marcar `Foot IK` no estado** — já está marcado (`m_IKOnFeet: 1` no `Dodge`
+  e no `Locomotion`) e não resolve. Foot IK alinha os pés com o mocap
+  original, não com o chão da cena; grounding de verdade exigiria raycast em
+  `OnAnimatorIK`.
+
+`Offset` é uma constante, então só resolve afundamento parelho ao longo do
+clipe. Se o pé entra muito num trecho e nada em outro, a escolha vira troca:
+voltar o *Bake Into Pose* em Y (recupera o encaixe, perde a responsividade) ou
+aceitar o afundamento no chão em nome de como ficou o ar.
 
 `Assets/Art/Animations/Player/Battle/Light Attack/Air/`
 
@@ -329,7 +362,67 @@ no chão, e só o watchdog (0.75s depois) o jogaria pra cima, fora de hora. Com 
 condição, o ataque só pode interromper o `JumpStart` depois que ele já cumpriu a
 única coisa que ele precisava cumprir.
 
-### 5.6 Land cancel — o `JumpEnd` não pode travar o controle
+### 5.6 Dash aéreo
+
+O C# já está feito (`airDashSpeed`, `airDashGravityScale`, um por ida ao ar,
+bloqueado durante golpe aéreo). No Animator falta **só a saída** — a entrada
+já funciona de graça: o `AnyState → Dodge` da Base Layer é global, então o
+trigger `Dodge` disparado no ar já cai no estado `Dodge` sozinho.
+
+O problema é que **todas** as saídas do `Dodge` vão pra estados de chão
+(`Sprint`, `ArmedSprint`, `Locomotion`/`ArmedLocomotion` se ainda existirem,
+`Attack1`, `Attack1Alt1`). Sem uma saída aérea, terminar um dash no ar
+devolveria o personagem pra um estado de chão ainda voando.
+
+| De | Para | HET | Exit | Dur | Condições |
+|---|---|---|---|---|---|
+| `Dodge` | `AirLoop` | ✔ | **0.55** | 0.15 | `IsJumping` = true |
+
+**Exit Time 0.55, e não os 0.85 das saídas de chão**: o clipe
+(`GreatSword_Slide_F_Root`, 80 frames a 120fps = **0.667s**) tem uma corridinha
+de recuperação no fim, que no chão é o que devolve o personagem pra locomoção
+mas no ar fica ridícula — pernas correndo no vazio.
+
+Cortar ali **não encurta o dash**, porque a distância aérea é
+`airDashSpeed × airDashDuration` (0.35s), 100% forçada por código: o empurrão
+termina em `0.35 / 0.667 = 0.525` do estado, ou seja, já acabou quando a saída
+dispara em 0.55. O Exit Time só decide quando o personagem PARA DE POSAR de
+dash — a distância percorrida é a mesma.
+
+Se mexer em `airDashDuration`, recalcular: o Exit Time tem que ficar **acima**
+de `airDashDuration / 0.667`, senão o dash é interrompido no meio do empurrão
+e perde alcance.
+
+**Colocar em PRIMEIRO na lista de transições do `Dodge`.** As saídas de chão
+existentes não condicionam em `IsJumping`, então qualquer uma delas que fique
+acima e tenha as condições satisfeitas rouba a vez.
+
+**Também adicionar `IsJumping` = false nas saídas de chão** (`→ Sprint`,
+`→ ArmedSprint`, e as demais). Só a ordem não basta na prática: as saídas de
+sprint eram tomadas mesmo com a aérea acima. A causa estava no C# (o
+`HandleDodge` ligava o `sprinting` durante QUALQUER dodge, inclusive o aéreo,
+satisfazendo `Dodge → ArmedSprint`) e já foi corrigida — o `sprinting` agora
+só liga no chão. As condições explícitas ficam como cinto de segurança: elas
+tornam a intenção legível no grafo em vez de depender de uma sutileza de
+código.
+
+O Exit Time 0.85 é o mesmo das outras saídas do `Dodge` — o dash aéreo usa o
+mesmo clipe, só muda pra onde vai depois.
+
+> **A duração do EMPURRÃO não é a duração do estado.** O clipe do dodge tem
+> ~1.17s e o deslocamento autorado nele acaba bem antes do fim, então amarrar
+> o empurrão ao estado fazia o personagem deslizar depois do movimento visual
+> ter acabado. Quem manda no empurrão é `airDashDuration` (0.35s) no
+> `PlayerController`: passado esse tempo, gravidade e horizontal voltam ao
+> normal enquanto a animação termina de tocar. Ajustar a "distância do dash"
+> ali, não no Exit Time.
+
+> Se um dia existir um clipe de dash aéreo dedicado, isto vira um estado
+> próprio (`AirDash`) com entrada condicionada em `IsJumping` a partir do
+> `AirLoop`, em vez de reusar o `Dodge`. O C# não precisaria mudar: ele já
+> identifica o dash pela tag `Dodging`, que o estado novo herdaria.
+
+### 5.7 Land cancel — o `JumpEnd` não pode travar o controle
 
 As três saídas do passo 5.4 são por Exit Time 0.7, ou seja, 70% do clipe de
 pouso com o jogador sem controle. Isso é exatamente o tipo de coisa que faz o
@@ -443,6 +536,11 @@ fisicamente alcançável. Ajuste pra gosto a partir daqui — os dois campos sã
 
 **Outras alavancas, se ainda precisar de mais folga depois de testar:**
 
+- `KnockbackReceiver.apexHangTime` (0.5). Segura o inimigo **parado no ápice**
+  antes de começar a cair. É a alavanca mais barata pra afrouxar a janela do
+  juggle: soma o valor inteiro ao tempo de voo **sem mexer na altura**, ao
+  contrário de subir `launchUpwardForce`, que muda as duas coisas juntas (e
+  quadraticamente).
 - `PlayerAttackHitbox.airHoldTime` (0.35). Cobre o resto de um golpe aéreo mais
   a entrada do próximo. Se o inimigo "escorrega" pra baixo entre o primeiro e o
   segundo golpe, é este.
@@ -494,6 +592,17 @@ Ligar `PlayerController.logDodgeDistance`? Não — não serve aqui. Testar assi
 - [x] Pular armado e olhar de perto os braços na decolagem: nenhum "pop"/
       travão — sinal de que `Empty → ArmedJumpGrip` ainda está conectado (passo
       6 não foi aplicado, ou só metade).
+- [ ] Dash no ar: sai, é horizontal (não diagonal pra baixo), e ao terminar o
+      personagem volta pro `AirLoop` — não pra um estado de chão flutuando.
+- [ ] Dash no ar duas vezes no mesmo pulo: o segundo **não** sai. Depois de
+      pousar, sai de novo.
+- [ ] Dash durante um golpe aéreo: **não** sai (senão tiraria o hover no meio
+      do swing e derrubaria o player do juggle).
+- [ ] Andar pra fora de uma borda (sem pular) e dashar: **sai** — o reset do
+      dash é por tocar o chão, não por pulo deliberado.
+- [ ] Launch: o inimigo **desacelera visivelmente** ao subir. Se sobe em
+      velocidade constante, é `launchGravity` baixa demais (não força de
+      launch de menos).
 - [x] Rolar e apertar pulo durante o roll: **nada** deve acontecer, nem na hora
       nem no fim do roll (era um trigger fantasma; ver `HandleJump`).
 

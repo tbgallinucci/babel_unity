@@ -38,9 +38,14 @@ namespace Babel.Combat
         // quem está em volta, não só quem está no alcance do swing pra frente.
         [SerializeField] private float radialHitRadius = 3f;
         // Velocidade vertical inicial do launcher (OnAttackHitLaunch). Com a
-        // launchGravity padrão do KnockbackReceiver (18), 12 dá ~4m de altura
-        // de pico e ~1.33s de voo. Altura = f²/(2*g), voo = 2*f/g — vale ter
+        // launchGravity padrão do KnockbackReceiver (40), 18 dá ~4m de altura
+        // de pico e ~0.9s de voo. Altura = f²/(2*g), voo = 2*f/g — vale ter
         // em mente que dobrar a força QUADRUPLICA a altura.
+        //
+        // Subiu de 12 pra 18 junto com a launchGravity (18 -> 40) só pra
+        // MANTER a altura: gravidade maior come mais velocidade no mesmo
+        // percurso. O que se ganha é a desaceleração visível — a "sensação de
+        // launch" — sem o inimigo ir parar mais alto.
         //
         // O alvo NÃO é "o mais alto possível": é ficar um pouco acima do ápice
         // do player (~3.75m com jumpForce 15 / gravity 30), porque o combo
@@ -54,7 +59,7 @@ namespace Babel.Combat
         // Já estava tunado na cena — igual jumpForce, o valor salvo no
         // Inspector do objeto real não muda sozinho, precisa editar lá
         // também.
-        [SerializeField] private float launchUpwardForce = 12f;
+        [SerializeField] private float launchUpwardForce = 18f;
         // Quanto tempo o alvo fica pendurado na altura em que está a cada
         // acerto do combo AÉREO (ver OnAirAttackHit e
         // KnockbackReceiver.ApplyAirHold). É o espelho, do lado do inimigo, do

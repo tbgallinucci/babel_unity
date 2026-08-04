@@ -70,22 +70,72 @@ namespace Babel.Player
         // alvo.
         [SerializeField, Range(0f, 1f)] private float airAttackGravityScale = 0f;
         // Empurrão vertical aplicado no INSTANTE em que um golpe aéreo começa,
-        // em unidades de velocidade (mesma escala do jumpForce).
+        // em unidades de velocidade (mesma escala do jumpForce). 0 = neutro.
         //
-        // Existe porque nem toda descida durante o golpe vem da física: os
-        // dois clipes aéreos estão com Root Transform Position (Y) em Bake
-        // Into Pose, então o movimento vertical DELES fica no visual, e o
-        // corpo afunda um pouco dentro do próprio swing por mais que a
-        // gravidade esteja travada em airAttackGravityScale = 0. Não dá pra
-        // corrigir isso zerando velocidade nenhuma — não é velocidade, é pose.
+        // Nasceu como conserto pro personagem afundar ao atacar no ar, mas
+        // aquilo era pose e não física: os clipes aéreos estavam com Root
+        // Transform Position (Y) em Bake Into Pose, então o movimento vertical
+        // DELES ficava no visual. Desmarcar o bake NESSES DOIS CLIPES resolveu
+        // de verdade (atenção: nos clipes de pulo o mesmo ajuste piora — ver o
+        // guia), então o default voltou a 0.
         //
-        // Um valor pequeno e positivo (2-4) compensa: o personagem ganha uma
-        // subidinha na entrada do golpe que cancela visualmente o afundamento
-        // do clipe. É também o idioma de vários character action games, onde
-        // atacar no ar dá um "pop" pra cima e sustenta o combo.
+        // Fica no projeto como tempero opcional, não como correção: um valor
+        // pequeno e positivo (2-4) dá o "pop" pra cima que vários character
+        // action games usam pra sustentar o combo aéreo.
+        [SerializeField, Range(0f, 8f)] private float airAttackLift = 0f;
+
+        [Header("Magnet do combo aéreo")]
+        // Alcance máximo pra considerar um inimigo pro magnet — fora disso, o
+        // golpe sai sem puxão nenhum, encontrar o alvo continua sendo por
+        // conta do jogador.
+        [SerializeField] private float airAttackMagnetRange = 10f;
+        // Velocidade do puxão em si (unidades por segundo).
+        [SerializeField] private float airAttackMagnetSpeed = 20f;
+        // Por quanto tempo o puxão age, contado do INÍCIO do ataque aéreo —
+        // não o golpe inteiro, só o bastante pra fechar a distância nos
+        // primeiros frames. Passado isso, o resto do combo depende só da
+        // posição que já foi alcançada.
+        [SerializeField] private float airAttackMagnetDuration = 0.2f;
+        // Não aproxima além disso — o alvo tem volume, "chegar" demais
+        // empurraria o player pra dentro do próprio inimigo.
+        [SerializeField] private float airAttackMagnetStopDistance = 1.5f;
+        // Velocidade horizontal do dash AÉREO. Forçada por código, não vinda do
+        // root motion do clipe — no ar o OnAnimatorMove ignora deltaPosition por
+        // completo (o deslocamento vem de lastGroundedSpeed), então um dash que
+        // dependesse do clipe simplesmente não sairia do lugar. Mesmo idioma que
+        // o Dash e o SlideAttack antigos usavam.
+        [SerializeField] private float airDashSpeed = 14f;
+        // Mesmo papel do airAttackLift, replicado aqui: um mini-impulso
+        // vertical na entrada do dash, que desacelera por gravidade cheia até
+        // estabilizar (ver o branch "ainda subindo" em OnAnimatorMove) — não é
+        // um offset estático. É o que corrige visualmente o mesmo tipo de
+        // "descida" que o ataque aéreo já tinha, e cujo remédio (o lift) já
+        // funciona lá; aqui é a versão pro dash.
+        [SerializeField] private float airDashLift = 8f;
+        // Por quanto tempo o dash aéreo EMPURRA, em segundos. Independente da
+        // duração do clipe de propósito: o clipe do dodge tem ~1.17s e o
+        // deslocamento autorado nele acaba bem antes do fim, então amarrar o
+        // empurrão ao estado fazia o personagem continuar deslizando depois do
+        // movimento visual ter terminado.
         //
-        // 0 = desligado (comportamento anterior).
-        [SerializeField, Range(0f, 8f)] private float airAttackLift = 3f;
+        // Passado esse tempo, o dash solta: a gravidade volta ao normal e o
+        // horizontal zera, enquanto a animação termina de tocar. Distância
+        // percorrida = airDashSpeed * airDashDuration (com gravidade anulada),
+        // então 14 * 0.35 dá ~4.9m.
+        [SerializeField] private float airDashDuration = 0.35f;
+        // Gravidade durante o dash aéreo, mesma semântica do
+        // airAttackGravityScale: 0 = o dash é perfeitamente horizontal (a
+        // gravidade fica ANULADA enquanto ele dura), 1 = você continua caindo
+        // enquanto dasha.
+        //
+        // Em 0, a distância percorrida é exatamente
+        // airDashSpeed * (duração do estado Dodge), sem componente vertical
+        // nenhuma. Isso deixa o dash bem legível, mas também o torna longo: se
+        // ficar flutuante demais, o ajuste é encurtar o dash (subir o Speed do
+        // estado Dodge no Animator, ou baixar o Exit Time da saída
+        // Dodge -> AirLoop), não devolver gravidade — devolver gravidade traz
+        // de volta a diagonal pra baixo que o valor 0 existe pra eliminar.
+        [SerializeField, Range(0f, 1f)] private float airDashGravityScale = 0f;
 
         [Header("Dodge")]
         // O roll continua sendo root motion do clipe "Standing Dodge Forward"
@@ -141,6 +191,15 @@ namespace Babel.Player
         // dodgeStartPosition e o bloco no UpdateDodgeScale quando não precisar
         // mais.
         [SerializeField] private bool logDodgeDistance;
+        // Diagnóstico temporário: loga verticalVelocity todo frame de dash
+        // aéreo. Existe porque "continua descendo" tem duas causas possíveis
+        // que parecem IDÊNTICAS jogando — airDashGravityScale maior que 0
+        // (física de verdade) ou algo no import do clipe (pose) — e só um
+        // número consegue separar as duas. Se o log mostrar sempre ~0.00, o
+        // problema não está aqui, é import settings. Se mostrar crescendo
+        // negativo, é este campo (ou o valor dele no Inspector) que precisa de
+        // atenção. Pode apagar quando não precisar mais.
+        [SerializeField] private bool logAirDashVelocity;
         // Janela (tempo normalizado do clipe) em que IsDodgeInvulnerable fica
         // true — só um stub pro futuro sistema de dano, nada consome isso
         // ainda.
@@ -215,6 +274,26 @@ namespace Babel.Player
         // entrada em vez de todo frame (ver OnAnimatorMove). Mesmo idioma do
         // wasDodging logo abaixo.
         private bool wasAirAttacking;
+        // Alvo escolhido UMA VEZ na borda de entrada do primeiro golpe aéreo
+        // de uma sequência (ver AirAttackMagnetPull) — não reavaliado a cada
+        // frame, e não reavaliado no segundo hit do combo (AirAttacking fica
+        // true contínuo entre AirAttack1 e AirAttack2, então a borda não
+        // refira; como o alvo já fica pendurado perto do player entre os dois
+        // hits via airHoldTime, não precisa de um puxão novo).
+        private Transform airAttackMagnetTarget;
+        // Tempo desde a borda de entrada do golpe aéreo ATUAL — o puxão só age
+        // nos primeiros airAttackMagnetDuration segundos.
+        private float airAttackMagnetElapsed;
+        // Um dash aéreo por pulo. Resetado ao encostar no chão (não ao fechar o
+        // latch `airborne`), porque cair de uma borda sem pular nunca abre o
+        // latch — sem isso, quem chegasse ao chão caindo ficaria sem o dash até
+        // o próximo pulo deliberado.
+        private bool airDashUsed;
+        // Borda do dash aéreo, mesmo papel do wasAirAttacking.
+        private bool wasAirDashing;
+        // Tempo desde o início do dash aéreo ATUAL — o empurrão dura
+        // airDashDuration, não o clipe inteiro (ver lá).
+        private float airDashElapsed;
         // Prazo do watchdog de decolagem (ver jumpTakeOffTimeout). Negativo =
         // nenhum pulo esperando o event.
         private float takeOffWatchdog = -1f;
@@ -426,6 +505,71 @@ namespace Babel.Player
         {
             return AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.AirAttack1)
                 || AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.AirAttack2);
+        }
+
+        // "Sempre, mira o mais próximo" — não depende do TargetingSystem
+        // (lock-on), de propósito: aquele trava por ÂNGULO DE CÂMERA, que é a
+        // métrica certa pra mirar manualmente mas errada aqui — o combo aéreo
+        // quer o alvo mais perto do PLAYER, esteja travado ou não.
+        //
+        // Só considera quem está REALMENTE voando
+        // (KnockbackReceiver.IsAirborne) — um inimigo parado no chão não
+        // deveria puxar o player pra baixo dele.
+        private Transform FindAirAttackMagnetTarget()
+        {
+            Transform best = null;
+            float bestSqrDistance = airAttackMagnetRange * airAttackMagnetRange;
+
+            foreach (Targetable candidate in FindObjectsByType<Targetable>(FindObjectsSortMode.None))
+            {
+                // Mesmo GameObject por construção: EnemyBase exige os dois
+                // componentes ([RequireComponent]), então GetComponent (não
+                // InParent/InChildren) é o correto e o mais barato aqui.
+                KnockbackReceiver candidateKnockback = candidate.GetComponent<KnockbackReceiver>();
+                if (candidateKnockback == null || !candidateKnockback.IsAirborne)
+                {
+                    continue;
+                }
+
+                float sqrDistance = (candidate.AimPoint.position - transform.position).sqrMagnitude;
+                if (sqrDistance < bestSqrDistance)
+                {
+                    bestSqrDistance = sqrDistance;
+                    best = candidate.AimPoint;
+                }
+            }
+
+            return best;
+        }
+
+        // Puxão em direção ao alvo do magnet, pra ser SOMADO ao root motion do
+        // golpe aéreo — não substitui, mesmo idioma do Lunge no chão.
+        //
+        // Vetor 3D completo (não só horizontal): o "e um pouco na vertical"
+        // sai de graça porque durante um juggle a diferença de altura entre
+        // os dois já costuma ser pequena (o airHoldTime prende o inimigo numa
+        // altura estável), então o componente vertical do vetor naturalmente
+        // já sai modesto sem precisar de um peso separado pra ele.
+        private Vector3 AirAttackMagnetPull()
+        {
+            if (airAttackMagnetTarget == null || airAttackMagnetElapsed > airAttackMagnetDuration)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 toTarget = airAttackMagnetTarget.position - transform.position;
+            float distance = toTarget.magnitude;
+
+            if (distance <= airAttackMagnetStopDistance)
+            {
+                return Vector3.zero;
+            }
+
+            // Clampa o passo pro que falta até o stopDistance, não só pro
+            // airAttackMagnetSpeed cru — sem isso, um frame longo (spike de
+            // deltaTime) podia atravessar o alvo de uma vez.
+            float step = Mathf.Min(airAttackMagnetSpeed * Time.deltaTime, distance - airAttackMagnetStopDistance);
+            return toTarget.normalized * step;
         }
 
         // Gira o personagem pro alvo travado no instante em que um golpe é
@@ -782,14 +926,50 @@ namespace Babel.Player
         // documentada no combo).
         private void HandleDodge()
         {
-            if (controller.isGrounded && dodgeAction.WasPressedThisFrame())
+            // O dash aéreo é limitado a um por ida ao ar. Resetar aqui (em
+            // "tocou o chão") e não no fechamento do latch `airborne` é
+            // deliberado: andar pra fora de uma borda nunca abre o latch, e um
+            // reset amarrado a ele deixaria quem caiu sem dash até o próximo
+            // pulo deliberado.
+            if (controller.isGrounded)
             {
-                if (IsInCommittedAttack())
+                airDashUsed = false;
+            }
+
+            if (dodgeAction.WasPressedThisFrame())
+            {
+                if (controller.isGrounded)
                 {
-                    dodgeQueued = true;
+                    if (IsInCommittedAttack())
+                    {
+                        dodgeQueued = true;
+                    }
+                    else
+                    {
+                        dodgePressed = true;
+                    }
                 }
-                else
+                else if (!airDashUsed)
                 {
+                    // No ar não existe fila: o Animator entra no Dodge por
+                    // AnyState (transição global que já existia), então não há
+                    // "golpe comprometido" pra esperar terminar — o dash sai na
+                    // hora, inclusive CANCELANDO um ataque aéreo em andamento.
+                    //
+                    // Existia um gate de !IsAirAttacking() aqui, com o
+                    // argumento de que cancelar tiraria o hover no meio do
+                    // swing. Estava errado por dois motivos: contradizia o
+                    // resto do combate (no chão o Dodge cancela Attack1/2/3 na
+                    // hora, e só os comprometidos enfileiram — decisão
+                    // explícita de deixar o jogo mais ágil/Nier), e o hover não
+                    // se perde de fato: o branch do dash aéreo tem prioridade
+                    // sobre o do ataque tanto no movimento quanto na gravidade,
+                    // então quem assume é o dash, com airDashGravityScale no
+                    // lugar do airAttackGravityScale.
+                    //
+                    // O limite de um por ida ao ar continua valendo, então isso
+                    // não vira uma saída grátis e repetível de todo golpe.
+                    airDashUsed = true;
                     dodgePressed = true;
                 }
             }
@@ -802,6 +982,29 @@ namespace Babel.Player
             {
                 animator.SetTrigger(AnimStrings.Dodge);
                 dodgePressed = false;
+
+                // Corta a queda JÁ, no frame do input, sem esperar o
+                // OnAnimatorMove detectar a borda do estado.
+                //
+                // A borda de lá continua existindo (é ela que zera nos casos em
+                // que o Dodge entra por outro caminho, tipo o DodgeQueued
+                // disparado pelo próprio Animator), mas ela só vale depois que
+                // o Animator registrou a troca. Qualquer frame entre o aperto e
+                // isso é queda livre, e a gravidade daqui é alta: a ~10 m/s um
+                // único frame já derruba ~17cm.
+                //
+                // O sintoma que denunciou isso: dashar SAINDO DE UM ATAQUE
+                // AÉREO não afundava, dashar direto do AirLoop afundava. A
+                // diferença entre os dois casos é exatamente a velocidade
+                // vertical no instante do aperto — zero durante o hover do
+                // ataque, vários m/s caindo. Se fosse offset de pose do clipe,
+                // os dois afundariam igual (AirLoop e AirAttack têm a MESMA
+                // convenção vertical, e o clipe do dodge difere dos dois na
+                // mesma medida).
+                if (!controller.isGrounded)
+                {
+                    verticalVelocity = 0f;
+                }
             }
 
             // Mesmo gate de janela do combo (ver ComboWindowOpen). Vale só pro
@@ -827,7 +1030,13 @@ namespace Babel.Player
             // mais o bool Sprint pra decidir o destino (só IsWielded) —
             // justamente pra ser ISTO aqui, e não o estado de antes do dodge, a
             // decidir se você sai correndo.
-            if (isDodging)
+            //
+            // SÓ no chão. Ligar o sprint durante o dash aéreo fazia a saída
+            // Dodge -> ArmedSprint (que condiciona em Sprint == true) ganhar da
+            // saída aérea, e o personagem voltava pra um estado de chão ainda
+            // voando. O sprint é uma decisão de locomoção terrestre; no ar ele
+            // não tem o que significar.
+            if (isDodging && controller.isGrounded)
             {
                 sprinting = true;
             }
@@ -936,6 +1145,36 @@ namespace Babel.Player
             // suspensa e sem o -0.5 que gruda o CharacterController no chão —
             // o suficiente pro isGrounded oscilar e o pouso engasgar.
             bool airAttacking = IsAirAttacking() && !controller.isGrounded;
+            // "Está no estado de dodge, no ar" — mesmo gate de chão do
+            // airAttacking acima, e pelo mesmo motivo: o dash pode encostar no
+            // chão antes do Animator resolver a saída.
+            bool airDodgeState = dodging && !controller.isGrounded;
+
+            // Borda de ENTRADA do dash aéreo: mata a queda que vinha do pulo, e
+            // soma o lift no lugar dela. Não preserva a subida do pulo (ao
+            // contrário do ataque aéreo) de propósito — dash é uma ação
+            // horizontal, e deixar o impulso do pulo somar faria dashar logo
+            // depois de pular virar um foguete diagonal; o lift é sempre o
+            // MESMO valor fixo, não um adicional por cima do que já tinha.
+            if (airDodgeState && !wasAirDashing)
+            {
+                verticalVelocity = airDashLift;
+                airDashElapsed = 0f;
+            }
+
+            if (airDodgeState)
+            {
+                airDashElapsed += Time.deltaTime;
+            }
+
+            wasAirDashing = airDodgeState;
+
+            // O EMPURRÃO HORIZONTAL tem prazo próprio, mais curto que o estado
+            // — é o que corta a deslizada no fim do dash. A suspensão de
+            // gravidade NÃO usa este prazo: ela acompanha o estado inteiro
+            // (airDodgeState), senão o personagem afunda com a animação ainda
+            // rodando. Ver o bloco de gravidade lá embaixo.
+            bool airDashing = airDodgeState && airDashElapsed <= airDashDuration;
 
             // Borda de ENTRADA do golpe aéreo: mata a velocidade de QUEDA, mas
             // preserva a de SUBIDA.
@@ -959,6 +1198,16 @@ namespace Babel.Player
                 // empurrão inteiro e o golpe sairia sem lift nenhum justo no
                 // caso em que ele é mais necessário.
                 verticalVelocity = Mathf.Max(verticalVelocity, 0f) + airAttackLift;
+
+                // Escolhido uma vez aqui, não a cada frame — ver o comentário
+                // do campo. O alvo (ou a ausência dele) vale pro golpe inteiro.
+                airAttackMagnetTarget = FindAirAttackMagnetTarget();
+                airAttackMagnetElapsed = 0f;
+            }
+
+            if (airAttacking)
+            {
+                airAttackMagnetElapsed += Time.deltaTime;
             }
 
             wasAirAttacking = airAttacking;
@@ -1028,6 +1277,20 @@ namespace Babel.Player
                 rootMotionPosition += transform.forward
                     * animator.GetFloat(AnimStrings.Lunge) * lungeScale * Time.deltaTime;
             }
+            else if (airDashing)
+            {
+                // Dash aéreo: deslocamento 100% forçado por código. O clipe do
+                // dodge tem root motion, mas ele é medido pro chão e aqui não
+                // seria lido de qualquer jeito — este branch existe justamente
+                // porque o de ar (lá embaixo) ignora deltaPosition e usaria a
+                // velocidade congelada na decolagem, o que daria um "dash" que
+                // anda na velocidade em que você já estava.
+                rootMotionPosition = transform.forward * airDashSpeed * Time.deltaTime;
+
+                // Igual ao ataque aéreo: depois do dash a queda é vertical, não
+                // retoma a corrida de antes do pulo.
+                lastGroundedSpeed = 0f;
+            }
             else if (airAttacking)
             {
                 // Ataque aéreo: aqui o root motion do PRÓPRIO clipe manda, ao
@@ -1039,6 +1302,11 @@ namespace Babel.Player
                 localRootMotion.x = 0f;
                 localRootMotion.y = 0f;
                 rootMotionPosition = transform.rotation * localRootMotion;
+
+                // Magnet: SOMADO ao root motion do clipe, mesmo idioma do
+                // Lunge no chão — o golpe continua tendo o avanço que já vinha
+                // autorado, o puxão só preenche o resto até o alvo.
+                rootMotionPosition += AirAttackMagnetPull();
 
                 // O golpe aéreo ANCORA o player: o resto da queda, depois que
                 // ele terminar, é vertical. Sem isto o branch de ar lá embaixo
@@ -1067,6 +1335,56 @@ namespace Babel.Player
             if (controller.isGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = -0.5f;
+            }
+            else if (airDodgeState && verticalVelocity > 0f)
+            {
+                // AINDA CONSUMINDO O LIFT: gravidade CHEIA, mesmo mecanismo do
+                // "ainda subindo" do ataque aéreo logo abaixo — é o que faz o
+                // airDashLift ser um IMPULSO real (sobe e desacelera) em vez de
+                // um offset que ficaria empurrando pra cima o dash inteiro
+                // (com airDashGravityScale em 0, nada mais reduziria essa
+                // velocidade se não fosse por este branch).
+                verticalVelocity = Mathf.Max(0f, verticalVelocity - gravity * Time.deltaTime);
+
+                if (logAirDashVelocity)
+                {
+                    Debug.Log($"[AirDash] (subindo o lift) verticalVelocity={verticalVelocity:F3}");
+                }
+            }
+            else if (airDodgeState)
+            {
+                // airDodgeState (o estado inteiro) e NÃO airDashing (só a
+                // janela do empurrão): a suspensão de gravidade vale enquanto o
+                // dash estiver TOCANDO, mesmo depois do impulso horizontal ter
+                // acabado.
+                //
+                // Amarrar as duas coisas ao mesmo prazo foi um erro meu ao
+                // introduzir airDashDuration pra cortar a deslizada do fim:
+                // passado o prazo, a gravidade voltava CHEIA com a animação
+                // ainda rodando, e o personagem afundava visivelmente antes do
+                // estado terminar. É a diferença que fazia o dash cair e o
+                // ataque aéreo não — o hover do ataque nunca teve prazo, dura o
+                // golpe inteiro.
+                //
+                // Agora só o empurrão horizontal tem prazo, que é exatamente o
+                // que airDashDuration existia pra resolver.
+                //
+                // Tem prioridade sobre o hover do ataque: os dois não coexistem
+                // (HandleDodge bloqueia dash durante golpe aéreo), mas durante o
+                // crossfade de saída de um pro outro as duas flags podem ficar
+                // true no mesmo frame, e aí quem manda tem que ser o estado que
+                // está ENTRANDO.
+                //
+                // Chegar aqui significa que o lift já foi todo consumido (o
+                // branch de cima cuidou disso) — daqui pra frente é hover puro,
+                // escalado pelo airDashGravityScale.
+                verticalVelocity -= gravity * airDashGravityScale * Time.deltaTime;
+
+                if (logAirDashVelocity)
+                {
+                    Debug.Log($"[AirDash] verticalVelocity={verticalVelocity:F3} " +
+                        $"airDashGravityScale={airDashGravityScale:F3}");
+                }
             }
             else if (airAttacking && verticalVelocity > 0f)
             {
