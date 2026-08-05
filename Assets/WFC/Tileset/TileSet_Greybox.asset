@@ -1,0 +1,672 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 086828aeefe94a6418f77b2d7dbbc3fe, type: 3}
+  m_Name: TileSet_Greybox
+  m_EditorClassIdentifier: WFC.Data::WFC.Data.TileSet
+  socketLibrary: {fileID: 11400000, guid: f81027627b6f02a479203120e131c19e, type: 2}
+  modules:
+  - {fileID: 11400000, guid: 1cb3cf5e7ea0837419e2777e3c933396, type: 2}
+  - {fileID: 11400000, guid: fcd2b65ba6423ea4d81e4309deb52b7c, type: 2}
+  - {fileID: 11400000, guid: c854719c9e592ad44ab2eded63c07a66, type: 2}
+  - {fileID: 11400000, guid: 396aec7fa1d660e4a83ea1526a315feb, type: 2}
+  - {fileID: 11400000, guid: af941a766a2d60b49b71e3960a23d26a, type: 2}
+  - {fileID: 11400000, guid: 1b12b4167e0f25f40a9fc1233db4828f, type: 2}
+  - {fileID: 11400000, guid: d4ecdadfeeeddb948a28bca7747e5afd, type: 2}
+  - {fileID: 11400000, guid: e86b0cef7ca1b8e48aaf8e989dc4a360, type: 2}
+  - {fileID: 11400000, guid: 641608053cdbb52489c40b1b713e1eea, type: 2}
+  - {fileID: 11400000, guid: c894af6ff04c5be43a0bc8b113507154, type: 2}
+  bakedVariants:
+  - moduleIndex: 0
+    rotationY: 0
+  - moduleIndex: 1
+    rotationY: 0
+  - moduleIndex: 1
+    rotationY: 1
+  - moduleIndex: 1
+    rotationY: 2
+  - moduleIndex: 1
+    rotationY: 3
+  - moduleIndex: 2
+    rotationY: 0
+  - moduleIndex: 2
+    rotationY: 1
+  - moduleIndex: 2
+    rotationY: 2
+  - moduleIndex: 2
+    rotationY: 3
+  - moduleIndex: 3
+    rotationY: 0
+  - moduleIndex: 3
+    rotationY: 1
+  - moduleIndex: 4
+    rotationY: 0
+  - moduleIndex: 4
+    rotationY: 1
+  - moduleIndex: 4
+    rotationY: 2
+  - moduleIndex: 4
+    rotationY: 3
+  - moduleIndex: 5
+    rotationY: 0
+  - moduleIndex: 5
+    rotationY: 1
+  - moduleIndex: 5
+    rotationY: 2
+  - moduleIndex: 5
+    rotationY: 3
+  - moduleIndex: 6
+    rotationY: 0
+  - moduleIndex: 6
+    rotationY: 1
+  - moduleIndex: 6
+    rotationY: 2
+  - moduleIndex: 6
+    rotationY: 3
+  - moduleIndex: 7
+    rotationY: 0
+  - moduleIndex: 7
+    rotationY: 1
+  - moduleIndex: 7
+    rotationY: 2
+  - moduleIndex: 7
+    rotationY: 3
+  - moduleIndex: 8
+    rotationY: 0
+  - moduleIndex: 9
+    rotationY: 0
+  bakedWeights:
+  - 3
+  - 2
+  - 2
+  - 2
+  - 2
+  - 1.2
+  - 1.2
+  - 1.2
+  - 1.2
+  - 1.2
+  - 1.2
+  - 0.4
+  - 0.4
+  - 0.4
+  - 0.4
+  - 0.35
+  - 0.35
+  - 0.35
+  - 0.35
+  - 0.2
+  - 0.2
+  - 0.2
+  - 0.2
+  - 0.08
+  - 0.08
+  - 0.08
+  - 0.08
+  - 0.1
+  - 0.1
+  bakedTags: 0200000006000000060000000600000006000000160000001600000016000000160000000600000006000000060000000600000006000000060000000a0000000a0000000a0000000a0000000e0000000e0000000e0000000e000000420000004200000042000000420000000101000081010000
+  bakedFaces:
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: door
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 1
+  - socket: ground
+    flipped: 0
+    verticalRotation: 1
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 2
+  - socket: ground
+    flipped: 0
+    verticalRotation: 2
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: open
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 3
+  - socket: ground
+    flipped: 0
+    verticalRotation: 3
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: sky
+    flipped: 0
+    verticalRotation: 0
+  - socket: ground
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  - socket: wall
+    flipped: 0
+    verticalRotation: 0
+  bakedAdjacency: cf921301000000003bc346040000000000000000000000000000000000000000778c8d00000000009d25270200000000cf921301000000003bc3460400000000000000000000000000000000000000008873501f000000009d25270200000000306da81e000000003bc346040000000000000000000000000000000000000000778c8d00000000009d25270200000000cf921301000000003bc346040000000000000000000000000000000000000000778c8d0000000000625ad01d00000000cf92130100000000c43ca81b0000000000000000000000000000000000000000778c8d00000000009d25270200000000cf92130100000000c43ca81b00000000000000000000000000000000000000008873501f000000009d25270200000000306da81e000000003bc3460400000000000000000000000000000000000000008873501f000000009d25270200000000306da81e000000003bc346040000000000000000000000000000000000000000778c8d0000000000625ad01d00000000cf92130100000000c43ca81b0000000000000000000000000000000000000000778c8d0000000000625ad01d00000000cf921301000000003bc3460400000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b0000000000000000000000000000000000000000778c8d00000000009d25270200000000306da81e00000000c43ca81b00000000000000000000000000000000000000008873501f000000009d25270200000000306da81e000000003bc3460400000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b0000000000000000000000000000000000000000778c8d0000000000625ad01d00000000cf92130100000000c43ca81b00000000000000000000000000000000000000008873501f00000000625ad01d00000000cf921301000000003bc34604000000000000000000000000000000000000000000002200000000009d2527020000000000004400000000003bc346040000000000000000000000000000000000000000778c8d00000000009d25270200000000cf921301000000003bc346040000000000000000000000000000000000000000778c8d00000000000080080000000000cf92130100000000000011000000000000000000000000000000000000000000778c8d00000000009d25270200000000306da81e00000000c43ca81b000000000000000000000000000000000000000000002200000000009d2527020000000000004400000000003bc3460400000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b0000000000000000000000000000000000000000778c8d00000000000080080000000000cf921301000000000000110000000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b00000000000000000000000000000000000000008873501f000000009d25270200000000306da81e000000003bc3460400000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b0000000000000000000000000000000000000000778c8d0000000000625ad01d00000000cf92130100000000c43ca81b00000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b00000000000000000000000000000000000000008873501f00000000625ad01d00000000306da81e00000000c43ca81b00000000000000000000000000000000000000008873501f00000000625ad01d00000000
+  bakedWordCount: 1
+  bakeReport: "BAKE OK\r\n\r\nM\xF3dulos: 10   \u2192   Variantes: 29\r\nPalavras
+    por bitset: 1 (cabem 64 m\xF3dulos)\r\nPares de adjac\xEAncia permitidos: 1476\r\n\r\nVizinhos
+    aceitos por variante e dire\xE7\xE3o:\r\n  Module_Floor_Open  PosX:13  NegX:13 
+    PosY:0  NegY:0  PosZ:13  NegZ:13  \r\n  Module_Wall  PosX:13  NegX:13  PosY:0 
+    NegY:0  PosZ:14  NegZ:13  \r\n  Module_Wall@90\xB0  PosX:14  NegX:13  PosY:0 
+    NegY:0  PosZ:13  NegZ:13  \r\n  Module_Wall@180\xB0  PosX:13  NegX:13  PosY:0 
+    NegY:0  PosZ:13  NegZ:14  \r\n  Module_Wall@270\xB0  PosX:13  NegX:14  PosY:0 
+    NegY:0  PosZ:13  NegZ:13  \r\n  Module_Corner  PosX:13  NegX:14  PosY:0  NegY:0 
+    PosZ:14  NegZ:13  \r\n  Module_Corner@90\xB0  PosX:14  NegX:13  PosY:0  NegY:0 
+    PosZ:14  NegZ:13  \r\n  Module_Corner@180\xB0  PosX:14  NegX:13  PosY:0  NegY:0 
+    PosZ:13  NegZ:14  \r\n  Module_Corner@270\xB0  PosX:13  NegX:14  PosY:0  NegY:0 
+    PosZ:13  NegZ:14  \r\n  Module_Corridor  PosX:13  NegX:13  PosY:0  NegY:0  PosZ:14 
+    NegZ:14  \r\n  Module_Corridor@90\xB0  PosX:14  NegX:14  PosY:0  NegY:0  PosZ:13 
+    NegZ:13  \r\n  Module_DeadEnd  PosX:14  NegX:14  PosY:0  NegY:0  PosZ:14  NegZ:13 
+    \r\n  Module_DeadEnd@90\xB0  PosX:14  NegX:13  PosY:0  NegY:0  PosZ:14  NegZ:14 
+    \r\n  Module_DeadEnd@180\xB0  PosX:14  NegX:14  PosY:0  NegY:0  PosZ:13  NegZ:14 
+    \r\n  Module_DeadEnd@270\xB0  PosX:13  NegX:14  PosY:0  NegY:0  PosZ:14  NegZ:14 
+    \r\n  Module_Door  PosX:13  NegX:13  PosY:0  NegY:0  PosZ:2  NegZ:13  \r\n  Module_Door@90\xB0 
+    PosX:2  NegX:13  PosY:0  NegY:0  PosZ:13  NegZ:13  \r\n  Module_Door@180\xB0 
+    PosX:13  NegX:13  PosY:0  NegY:0  PosZ:13  NegZ:2  \r\n  Module_Door@270\xB0 
+    PosX:13  NegX:2  PosY:0  NegY:0  PosZ:13  NegZ:13  \r\n  Module_Door_Corridor 
+    PosX:14  NegX:14  PosY:0  NegY:0  PosZ:2  NegZ:13  \r\n  Module_Door_Corridor@90\xB0 
+    PosX:2  NegX:13  PosY:0  NegY:0  PosZ:14  NegZ:14  \r\n  Module_Door_Corridor@180\xB0 
+    PosX:14  NegX:14  PosY:0  NegY:0  PosZ:13  NegZ:2  \r\n  Module_Door_Corridor@270\xB0 
+    PosX:13  NegX:2  PosY:0  NegY:0  PosZ:14  NegZ:14  \r\n  Module_Stairs  PosX:14 
+    NegX:14  PosY:0  NegY:0  PosZ:14  NegZ:13  \r\n  Module_Stairs@90\xB0  PosX:14 
+    NegX:13  PosY:0  NegY:0  PosZ:14  NegZ:14  \r\n  Module_Stairs@180\xB0  PosX:14 
+    NegX:14  PosY:0  NegY:0  PosZ:13  NegZ:14  \r\n  Module_Stairs@270\xB0  PosX:13 
+    NegX:14  PosY:0  NegY:0  PosZ:14  NegZ:14  \r\n  Module_SolidFill  PosX:14  NegX:14 
+    PosY:0  NegY:0  PosZ:14  NegZ:14  \r\n  Module_Air  PosX:14  NegX:14  PosY:0 
+    NegY:0  PosZ:14  NegZ:14  \r\n"

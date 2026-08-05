@@ -1,0 +1,18 @@
+{
+    "name": "WFC.Runtime",
+    "rootNamespace": "WFC.Runtime",
+    "references": [
+        "WFC.Core",
+        "WFC.Data",
+        "Unity.AI.Navigation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

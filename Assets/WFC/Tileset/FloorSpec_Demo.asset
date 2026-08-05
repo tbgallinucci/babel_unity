@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8984f9305677d24489b8d7c55ed97366, type: 3}
+  m_Name: FloorSpec_Demo
+  m_EditorClassIdentifier: WFC.Data::WFC.Data.FloorSpec
+  tileSet: {fileID: 11400000, guid: de8408462539e424ba2635cc347b499e, type: 2}
+  gridSize: {x: 24, y: 1, z: 24}
+  cellSize: 6
+  cellHeight: 5
+  randomSeed: 0
+  seed: -1354673281
+  sealBorders: 1
+  borderSocket: wall
+  skeleton:
+    targetRooms: 8
+    roomWidth: {x: 3, y: 6}
+    roomDepth: {x: 3, y: 6}
+    roomMargin: 1
+    borderPadding: 1
+    placementAttempts: 60
+    extraLoopChance: 0.15
+    useDoors: 1
+  maxAttempts: 12
+  entropyNoise: 0.0001
+  roleRules:
+  - role: 4
+    requiredTags: 64
+    forbiddenTags: 0
+  - role: 1
+    requiredTags: 2
+    forbiddenTags: 320
+  - role: 3
+    requiredTags: 2
+    forbiddenTags: 320
+  - role: 2
+    requiredTags: 2
+    forbiddenTags: 64
+  - role: 0
+    requiredTags: 256
+    forbiddenTags: 0

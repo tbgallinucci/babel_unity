@@ -1,3 +1,8 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="WFC.Runtime.csproj" />
+  <Project Path="WFC.Data.csproj" />
+  <Project Path="WFC.Tests.csproj" />
+  <Project Path="WFC.Editor.csproj" />
+  <Project Path="WFC.Core.csproj" />
 </Solution>
