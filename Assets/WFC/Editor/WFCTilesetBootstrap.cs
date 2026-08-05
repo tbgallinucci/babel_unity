@@ -56,9 +56,9 @@ namespace WFC.EditorTools
         private string outputFolder = "Assets/WFC/Tileset";
 
         private bool createFloorSpec = true;
-        private Vector3Int demoGridSize = new Vector3Int(16, 1, 16);
+        private Vector3Int demoGridSize = new Vector3Int(24, 1, 24);
         private float cellSize = 6f;    // medido nos prefabs greybox deste projeto
-        private float cellHeight = 5f;  // altura de parede do greybox
+        private float cellHeight = 10f; // altura de parede do greybox
 
         private Vector2 scroll;
         private string lastReport;

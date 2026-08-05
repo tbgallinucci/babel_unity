@@ -39,6 +39,17 @@ namespace Babel.Floor
         [Tooltip("Opcional. Sem ele, salas de Combate saem sem prop nenhum.")]
         [SerializeField] private PropRoomPopulator propPopulator;
 
+        [Tooltip("Opcional. Limita quantas luzes realtime ficam ligadas ao mesmo tempo.")]
+        [SerializeField] private DynamicLightBudget lightBudget;
+
+        [Tooltip("Opcional. Desliga a geometria das salas que o jogador não pode ver " +
+                 "(substituto do Occlusion Culling, que não funciona em andar gerado em runtime).")]
+        [SerializeField] private RoomStreamer roomStreamer;
+
+        [Tooltip("Opcional. Impede que a luz de uma sala atravesse a parede e ilumine a sala " +
+                 "vizinha. Sem ele as tochas sem sombra (a maioria) vazam entre salas.")]
+        [SerializeField] private RegionLightMask regionLightMask;
+
         [Header("Run")]
         [Min(1)] [SerializeField] private int startingFloor = 1;
 
@@ -78,6 +89,9 @@ namespace Babel.Floor
             populator = GetComponent<EnemyPopulator>();
             lightingPopulator = GetComponent<BasicLightingPopulator>();
             propPopulator = GetComponent<PropRoomPopulator>();
+            lightBudget = GetComponent<DynamicLightBudget>();
+            roomStreamer = GetComponent<RoomStreamer>();
+            regionLightMask = GetComponent<RegionLightMask>();
         }
 
         private void Start()
@@ -129,6 +143,11 @@ namespace Babel.Floor
             if (lightingPopulator != null) lightingPopulator.Clear();
             if (propPopulator != null) propPopulator.Clear();
 
+            // Antes de gerar o próximo andar: soltam as referências pro andar velho, que
+            // está prestes a ser destruído.
+            if (lightBudget != null) lightBudget.Clear();
+            if (roomStreamer != null) roomStreamer.Clear();
+
             // Seed por andar derivada da seed da run: a run inteira é reproduzível a
             // partir de um número só, e o andar 7 é sempre o mesmo andar 7.
             int floorSeed = WFCSolver.DeriveSeed(runSeed, floorNumber);
@@ -172,6 +191,17 @@ namespace Babel.Floor
 
             if (propPopulator != null)
                 propPopulator.Populate(floor, archetypeByRoom, propRng, floor.Root);
+
+            // Performance e contenção de luz, por último: os três indexam o que JÁ existe em
+            // cena, então precisam rodar depois de toda a população (senão tocha/prop plantados
+            // agora ficariam de fora do orçamento, do streaming e da máscara).
+            //
+            // A máscara vem ANTES do orçamento de propósito: ela carimba as tochas, e o
+            // orçamento é quem as apaga. Na ordem inversa, o carimbo reacenderia nada — mas
+            // ficaria dependendo de o Apply() do orçamento rodar de novo para valer.
+            if (regionLightMask != null) regionLightMask.Rebuild(floor, player);
+            if (lightBudget != null) lightBudget.Rebuild(floor.Root, player);
+            if (roomStreamer != null) roomStreamer.Rebuild(floor, player);
 
             IsGenerating = false;
 

@@ -44,6 +44,13 @@ namespace WFC.Runtime
         public int[] Variants;
 
         public IReadOnlyList<SpawnAnchor> Anchors = new List<SpawnAnchor>();
+
+        /// <summary>
+        /// Peça instanciada em cada célula (índice linear), null onde não houve geometria.
+        /// É o que permite ao jogo agrupar geometria por região — ver RoomStreamer.
+        /// </summary>
+        public Transform[] PiecesByCell;
+
         public NavMeshSurface NavMesh;
 
         public Vector3 EntranceWorld;

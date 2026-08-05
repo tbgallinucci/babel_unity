@@ -1,0 +1,207 @@
+// ============================================================================
+//  TorchLight.cs  —  código do JOGO
+//
+//  Trata uma tocha como UMA COISA SÓ, apesar de ela ser duas Lights.
+//
+//  Por que são duas: um Spot estreito (~110°) é o único que consegue projetar
+//  sombra decente, porque a densidade de texel do shadow map segue
+//
+//      texel ≈ 2 · tan(outer/2) · range / resolução
+//
+//  e `tan(outer/2)` explode perto de 180° (a 170° vale 11,4; a 110°, 1,43 —
+//  8× mais barato por metro de alcance). Mas um cone estreito não preenche a
+//  sala. Então o Spot cuida da OCLUSÃO perto da tocha e um Point largo SEM
+//  sombra cuida do PREENCHIMENTO. É o padrão key + fill.
+//
+//  Este componente existe porque o orçamento de luz precisa raciocinar sobre
+//  "tochas", não sobre "Lights". Sem ele o DynamicLightBudget coletava todo
+//  Light sob o andar e ordenava por distância — e como as duas luzes da mesma
+//  tocha são dois itens da lista, o corte do orçamento caía NO MEIO de uma
+//  tocha: o Spot ligado e o Point desligado (ou o contrário). É essa a causa
+//  de "algumas tochas acendem pela metade, de forma imprevisível conforme o
+//  jogador anda".
+// ============================================================================
+
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+
+namespace Babel.VFX
+{
+    /// <summary>Quanto uma tocha custa neste frame. Quem decide é o DynamicLightBudget.</summary>
+    public enum TorchTier
+    {
+        /// <summary>Apagada por completo.</summary>
+        Off,
+
+        /// <summary>Acesa, mas sem projetar sombra. É o estado da maioria das tochas.</summary>
+        Fill,
+
+        /// <summary>Acesa e projetando sombra. Reservado às poucas mais próximas do jogador.</summary>
+        Key,
+    }
+
+    [AddComponentMenu("Babel/Torch Light")]
+    public sealed class TorchLight : MonoBehaviour
+    {
+        [Tooltip("Spot estreito que projeta sombra quando a tocha está no tier Key. " +
+                 "Vazio = procura um Light do tipo Spot nos filhos no Awake.")]
+        [SerializeField] private Light keyLight;
+
+        [Tooltip("Point largo que preenche a sala. NUNCA projeta sombra — sombra de Point custa " +
+                 "6 slices de atlas contra 1 do Spot. Vazio = procura um Light do tipo Point nos filhos.")]
+        [SerializeField] private Light fillLight;
+
+        [Tooltip("Qualidade da sombra quando no tier Key.")]
+        [SerializeField] private LightShadows keyShadows = LightShadows.Soft;
+
+        [Tooltip("Graus que o Spot inclina para BAIXO. Não é enfeite: o anchor de parede aponta " +
+                 "na horizontal, então o chão recebe a luz em ângulo rasante — e é aí que o depth " +
+                 "bias falha e a acne aparece como listras pretas no piso. Inclinar aproxima a " +
+                 "direção da luz da normal do chão e a acne colapsa, permitindo baixar o bias. " +
+                 "25–35 costuma bastar. 0 = mantém a horizontal do anchor.")]
+        [Range(0f, 80f)] [SerializeField] private float keyPitchDegrees = 30f;
+
+        private LightFlicker keyFlicker;
+        private LightFlicker fillFlicker;
+
+        private float keyBaseIntensity;
+        private float fillBaseIntensity;
+
+        private TorchTier tier = TorchTier.Off;
+        private float dim = 1f;
+        private bool awake;
+
+        /// <summary>
+        /// Região (sala/corredor) do AnnotatedGrid em que a tocha nasceu. Preenchida pelo
+        /// BasicLightingPopulator. É o que permite conter a luz na própria sala via
+        /// rendering layers — ver RegionLightMask.
+        /// </summary>
+        public int Region { get; set; } = -1;
+
+        public TorchTier Tier => tier;
+
+        /// <summary>Só para o orçamento medir distância sem pagar GetComponent toda avaliação.</summary>
+        public Transform Anchor => transform;
+
+        private void Awake() => EnsureAwake();
+
+        private void EnsureAwake()
+        {
+            if (awake) return;
+            awake = true;
+
+            // Auto-descoberta pelo TIPO da luz, não pela ordem dos filhos: o prefab pode ser
+            // remontado (o Point já foi filho do Spot e pode virar irmão) sem quebrar isto.
+            if (keyLight == null || fillLight == null)
+            {
+                foreach (Light l in GetComponentsInChildren<Light>(true))
+                {
+                    if (keyLight == null && l.type == LightType.Spot) keyLight = l;
+                    else if (fillLight == null && l.type == LightType.Point) fillLight = l;
+                }
+            }
+
+            if (keyLight != null)
+            {
+                keyBaseIntensity = keyLight.intensity;
+                keyFlicker = keyLight.GetComponent<LightFlicker>();
+
+                // Aplicado aqui, em runtime, e não assado no prefab: o Spot está na RAIZ, e a
+                // rotação da raiz é sobrescrita pelo Instantiate do populador (que usa a rotação
+                // do anchor). Inclinar no prefab não sobreviveria. Rodar uma vez no Awake, depois
+                // do Instantiate, sobrevive — e o guard `awake` garante que é uma vez só.
+                if (keyPitchDegrees > 0f)
+                    keyLight.transform.localRotation *= Quaternion.Euler(keyPitchDegrees, 0f, 0f);
+            }
+
+            if (fillLight != null)
+            {
+                fillBaseIntensity = fillLight.intensity;
+                fillFlicker = fillLight.GetComponent<LightFlicker>();
+            }
+
+            // Invariante do desenho, não preferência: o fill existe justamente por ser barato.
+            if (fillLight != null) fillLight.shadows = LightShadows.None;
+        }
+
+        // =====================================================================
+        //  Orçamento
+        // =====================================================================
+
+        /// <summary>
+        /// Aplica tier e atenuação. As duas luzes andam SEMPRE juntas — nunca meia tocha.
+        /// </summary>
+        /// <param name="newTier">Off / Fill / Key.</param>
+        /// <param name="intensityScale">
+        /// 0..1. Usado para desvanecer a tocha nos últimos metros antes do corte, em vez de
+        /// apagá-la de uma vez: um sumiço instantâneo chama muito mais atenção que a ausência.
+        /// </param>
+        public void Apply(TorchTier newTier, float intensityScale)
+        {
+            EnsureAwake();
+
+            tier = newTier;
+            dim = Mathf.Clamp01(intensityScale);
+
+            bool on = newTier != TorchTier.Off;
+
+            if (keyLight != null)
+            {
+                keyLight.enabled = on;
+                keyLight.shadows = newTier == TorchTier.Key ? keyShadows : LightShadows.None;
+                PushIntensity(keyLight, keyFlicker, keyBaseIntensity);
+            }
+
+            if (fillLight != null)
+            {
+                fillLight.enabled = on;
+                PushIntensity(fillLight, fillFlicker, fillBaseIntensity);
+            }
+        }
+
+        /// <summary>
+        /// O LightFlicker reescreve `intensity` todo Update. Se o orçamento também escrevesse
+        /// direto, um sobrescreveria o outro e o fade não apareceria (ou apareceria tremido).
+        /// Por isso: onde existe flicker, o fator vai por ele; onde não existe, vai direto.
+        /// </summary>
+        private void PushIntensity(Light light, LightFlicker flicker, float baseIntensity)
+        {
+            if (flicker != null) flicker.IntensityScale = dim;
+            else light.intensity = baseIntensity * dim;
+        }
+
+        // =====================================================================
+        //  Contenção de luz por região
+        // =====================================================================
+
+        /// <summary>
+        /// Restringe quais renderers esta tocha ilumina. Aplicado nas DUAS luzes: o vazamento
+        /// de parede vem sobretudo do fill, que por definição não tem sombra para bloqueá-lo.
+        /// </summary>
+        public void SetRenderingLayerMask(uint mask)
+        {
+            EnsureAwake();
+            ApplyMask(keyLight, mask);
+            ApplyMask(fillLight, mask);
+        }
+
+        private static void ApplyMask(Light light, uint mask)
+        {
+            if (light == null) return;
+
+            var data = light.GetComponent<UniversalAdditionalLightData>();
+            if (data == null) return;
+
+            // É `UniversalAdditionalLightData.renderingLayers` que o URP lê ao montar as
+            // constantes de luz (ForwardLights.InitializeLightConstants) — escrever direto em
+            // Light.renderingLayerMask seria sobrescrito por SyncLightAndShadowLayers().
+            int bits = unchecked((int)mask);
+            data.renderingLayers = bits;
+
+            // A máscara de SOMBRA acompanha a de iluminação: separá-las produziria o pior dos
+            // mundos — parede que recebe a luz mas não entra no shadow map dela.
+            data.customShadowLayers = false;
+            data.shadowRenderingLayers = bits;
+        }
+    }
+}

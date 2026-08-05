@@ -14,13 +14,13 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  m_Fog: 1
+  m_FogColor: {r: 0.012, g: 0.013, b: 0.018, a: 1}
   m_FogMode: 3
-  m_FogDensity: 0.01
+  m_FogDensity: 0.012
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
+  m_AmbientSkyColor: {r: 0.018, g: 0.02, b: 0.026, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
@@ -32,10 +32,10 @@ RenderSettings:
   m_FlareFadeSpeed: 3
   m_HaloTexture: {fileID: 0}
   m_SpotCookie: {fileID: 10001, guid: 0000000000000000e000000000000000, type: 0}
-  m_DefaultReflectionMode: 0
+  m_DefaultReflectionMode: 1
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 1
+  m_ReflectionIntensity: 0.224
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
   m_UseRadianceAmbientProbe: 0
@@ -823,13 +823,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ef5a6bec441c2a4eb07b2531e231227, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Babel.Combat.PlayerAttackHitbox
-  hitRadius: 2
-  hitAngle: 224
+  hitRadius: 4
+  hitAngle: 250
   hitHeight: 1
   enemyLayer:
     serializedVersion: 2
     m_Bits: 8
-  radialHitRadius: 3
+  radialHitRadius: 4
   launchUpwardForce: 20
   airHoldTime: 0.35
   hitStopBaseFrames: 5
@@ -1128,6 +1128,9 @@ GameObject:
   - component: {fileID: 1123359628}
   - component: {fileID: 1123359631}
   - component: {fileID: 1123359632}
+  - component: {fileID: 1123359634}
+  - component: {fileID: 1123359633}
+  - component: {fileID: 1123359635}
   m_Layer: 7
   m_Name: Level_Gen
   m_TagString: Untagged
@@ -1190,6 +1193,9 @@ MonoBehaviour:
   populator: {fileID: 1123359628}
   lightingPopulator: {fileID: 1123359631}
   propPopulator: {fileID: 1123359632}
+  lightBudget: {fileID: 1123359634}
+  roomStreamer: {fileID: 1123359633}
+  regionLightMask: {fileID: 1123359635}
   startingFloor: 1
   randomRunSeed: 1
   runSeed: 12345
@@ -1214,6 +1220,7 @@ MonoBehaviour:
   floorSpec: {fileID: 11400000, guid: c7221ea856ee6e2418b119275a9ddf3b, type: 2}
   bakeNavMesh: 1
   agentTypeId: 0
+  combineStaticBatches: 1
   addCeiling: 1
   ceilingMaterial: {fileID: 0}
   ceilingOverhang: 0.5
@@ -1233,9 +1240,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdf79ff20c5426a4794ad36a20a43640, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.BasicLightingPopulator
-  lightPrefab: {fileID: 0}
+  lightPrefab: {fileID: 6018316857538242690, guid: 1882d7b9697076341ba6594c3914dd8e, type: 3}
   everyNWalls: 3
   startOffset: 0
+  oneAxisPerRoom: 1
   logSummary: 1
 --- !u!114 &1123359632
 MonoBehaviour:
@@ -1252,6 +1260,61 @@ MonoBehaviour:
   archetypes:
   - {fileID: 11400000, guid: 5dc40a5d98c25054bb5b999ce5ac4c9b, type: 2}
   safeRadiusFromEntrance: 6
+  logSummary: 0
+--- !u!114 &1123359633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123359626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6e048c288f42bc45a056552066607a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.RoomStreamer
+  viewer: {fileID: 0}
+  viewCamera: {fileID: 0}
+  visibleDepth: 2
+  alwaysVisibleDepth: 1
+  useFrustumCulling: 1
+  updateInterval: 0.15
+  logSummary: 1
+--- !u!114 &1123359634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123359626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 701dfdc7c86faf54a82e6448875acb53, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.DynamicLightBudget
+  viewer: {fileID: 0}
+  keyLights: 2
+  fillLights: 14
+  activeRadius: 80
+  fadeDistance: 4
+  radiusHysteresis: 2
+  rankHysteresis: 1
+  updateInterval: 0.2
+  logSummary: 1
+--- !u!114 &1123359635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123359626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4dfeedc7fc61c34f918783e8e2323df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.RegionLightMask
+  dynamicObjects: []
+  updateInterval: 0.15
   logSummary: 1
 --- !u!4 &1259028881 stripped
 Transform:
@@ -1704,6 +1767,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Global Volume
       objectReference: {fileID: 0}
+    - target: {fileID: 8445273949091503583, guid: a3573128f142fa74abf5bf540536d797, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8477736011060371504, guid: a3573128f142fa74abf5bf540536d797, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1993,6 +2060,30 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 369706794297136171, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 27
+      objectReference: {fileID: 0}
     - target: {fileID: 958974355873056535, guid: 4dc59b766b3a81046a94ad9626680e4f, type: 3}
       propertyPath: m_Name
       value: Canvas

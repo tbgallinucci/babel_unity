@@ -31,6 +31,13 @@ namespace WFC.Runtime
         /// </summary>
         public List<SpawnAnchor> Anchors = new List<SpawnAnchor>();
 
+        /// <summary>
+        /// Peça instanciada em cada célula (índice linear do Grid3D), null onde não houve
+        /// geometria. Serve pra quem precisa agrupar geometria por sala — batching, culling
+        /// por região, destaque visual. Null se a instanciação foi desligada.
+        /// </summary>
+        public Transform[] PiecesByCell;
+
         /// <summary>Seed efetivamente usada — guarde para reproduzir o andar.</summary>
         public int Seed;
 

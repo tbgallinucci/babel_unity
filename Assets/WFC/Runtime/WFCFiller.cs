@@ -165,7 +165,9 @@ namespace WFC.Runtime
             if (InstantiateGeometry && _parent != null)
             {
                 var sw2 = Stopwatch.StartNew();
-                result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors, _layer);
+                result.PiecesByCell = new Transform[g.CellCount];
+                result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors, _layer,
+                                                  result.PiecesByCell);
                 sw2.Stop();
                 result.InstantiateMilliseconds = sw2.Elapsed.TotalMilliseconds;
             }

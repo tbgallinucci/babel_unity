@@ -40,6 +40,14 @@ namespace WFC.Runtime
         [Tooltip("Agent Type ID da NavMesh. 0 = Humanoid (o padrão).")]
         public int agentTypeId;
 
+        [Header("Performance")]
+        [Tooltip("Funde as peças que compartilham material num draw call só, depois de instanciar. " +
+                 "Diferente do Occlusion Culling (que é bakeado em editor e por isso inútil pra andar " +
+                 "gerado em runtime), o static batching funciona em runtime — as peças nunca se movem " +
+                 "depois de postas. Custo: duplica dado de malha na memória; se memória virar gargalo " +
+                 "num andar grande, é o primeiro item a reconsiderar.")]
+        public bool combineStaticBatches = true;
+
         [Header("Teto")]
         [Tooltip("Cria uma 'tampa' única (plane + collider) sobre o andar inteiro, na altura da parede " +
                  "(cellHeight). Alternativa barata a modelar teto peça por peça: não participa do WFC, " +
@@ -180,6 +188,7 @@ namespace WFC.Runtime
             floor.Root = fill.Root;
             floor.Variants = fill.Variants;
             floor.Anchors = fill.Anchors;
+            floor.PiecesByCell = fill.PiecesByCell;
             floor.SolveMilliseconds = fill.SolveMilliseconds;
             floor.InstantiateMilliseconds = fill.InstantiateMilliseconds;
 
@@ -210,6 +219,12 @@ namespace WFC.Runtime
                 floor.NavMeshMilliseconds = swNav.Elapsed.TotalMilliseconds;
             }
 
+            // Depois da NavMesh de propósito: o bake lê as malhas originais peça a peça, e
+            // combiná-las antes poderia mudar o que ele enxerga. Depois daqui a geometria
+            // não muda mais, que é a única exigência do batching estático.
+            if (combineStaticBatches && floor.Root != null)
+                CombineStaticBatches(floor);
+
             floor.Success = true;
             Current = floor;
 
@@ -217,6 +232,21 @@ namespace WFC.Runtime
 
             FloorGenerated?.Invoke(floor);
             onDone?.Invoke(floor);
+        }
+
+        /// <summary>
+        /// Funde as peças do andar por material, num draw call por material em vez de um por
+        /// peça. Os Renderers individuais CONTINUAM existindo e podem ser desligados um a um
+        /// (é o que o RoomStreamer do jogo faz) — desligar só reduz o ganho do batch naquele
+        /// frame, não quebra nada.
+        /// </summary>
+        private static void CombineStaticBatches(GeneratedFloor floor)
+        {
+            // A sobrecarga que recebe só a raiz percorre a hierarquia inteira sozinha — é o
+            // que queremos: as malhas do greybox não estão na raiz de cada peça, estão nos
+            // filhos (Floor, Wall_N, Lintel...). Passar só os filhos diretos da raiz do andar
+            // deixaria de fora exatamente a geometria que interessa.
+            StaticBatchingUtility.Combine(floor.Root.gameObject);
         }
 
         /// <summary>

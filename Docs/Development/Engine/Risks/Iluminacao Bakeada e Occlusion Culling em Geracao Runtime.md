@@ -1,7 +1,9 @@
 # Risco: iluminação assada e Occlusion Culling não funcionam em geração runtime
 
-**Status:** identificado, não mitigado. Sem impacto prático hoje (kit
-greybox); vira relevante quando o tileset trocar por arte de produção.
+**Status:** identificado e **mitigado** (implementação em 2026-08-05, ver
+"Mitigações implementadas" no fim). Continua valendo como registro do risco
+porque as mitigações precisam ser **calibradas e validadas** na troca do
+greybox por arte de produção — é lá que o problema deixa de ser teórico.
 
 **Origem:** relato de terceiro
 ([thread r/Unity3D](https://reddit.com/r/Unity3D), captura em anexo na
@@ -61,7 +63,78 @@ parede, só porque caem dentro do cone da câmera.
 (mesh mais pesada, mais materiais, mais draw calls por peça) — aí overdraw de
 sala inteira escondida atrás de parede passa a custar de verdade.
 
-## Mitigação proposta (não implementada — anotar como próximo passo antes da troca de arte)
+## Mitigações implementadas
+
+Quatro frentes, em ordem de esforço/ganho. As duas primeiras são fechadas
+(não pedem calibragem); as duas últimas expõem parâmetros que precisam ser
+afinados jogando.
+
+### 1. Static batching em runtime — `WFCFloorGenerator.combineStaticBatches`
+
+`StaticBatchingUtility.Combine` funde as peças por material depois de
+instanciar. Diferente do Occlusion Culling, **o static batching funciona em
+runtime** — a única exigência é que a geometria não se mova depois, o que é
+verdade pro casco do andar.
+
+Roda **depois** do bake de NavMesh de propósito: o bake lê as malhas peça a
+peça, e combiná-las antes poderia mudar o que ele enxerga.
+
+Custo: duplica dado de malha na memória. Se memória virar gargalo num andar
+grande, é o primeiro item a reconsiderar.
+
+### 2. GPU Instancing nos materiais gerados — `GreyboxTileGenerator.MakeMat()`
+
+`mat.enableInstancing = true` nos 3 materiais do greybox. Ligado por código
+porque esses materiais são **gerados** — marcar o checkbox à mão se perderia
+na próxima regeração.
+
+⚠️ **Materiais de arte autorados fora do gerador precisam do checkbox
+"Enable GPU Instancing" marcado manualmente.** Item de checklist na troca de
+tileset.
+
+### 3. Orçamento de luz realtime — `DynamicLightBudget`
+
+Mantém só as N luzes mais próximas do jogador ligadas (`Light.enabled`),
+reavaliando a cada `updateInterval`. Resolve dois problemas: o limite prático
+de luzes adicionais **por objeto** do URP/Built-in (passar do limite não dá
+erro — o Unity descarta silenciosamente as mais fracas, e luz "some" de forma
+imprevisível) e o custo de sombra, se alguma tocha tiver sombra ligada.
+
+**Precisa de calibragem:** `maxActiveLights` e `activeRadius`. Sintoma de
+valor baixo demais = buraco escuro perceptível andando pelo corredor.
+
+### 4. Room streaming — `RoomStreamer`
+
+O substituto caseiro do Occlusion Culling. Usa o fato de que o esqueleto já
+entrega um **grafo de espaços conectados** (regiões do `AnnotatedGrid`:
+corredores são a região 0, cada sala tem a sua): se o jogador está na sala A,
+tudo que ele pode ver está a poucos passos de A nesse grafo, porque a única
+forma de enxergar outra sala é através das portas/vãos. Então
+`visível = BFS a partir da região do jogador, até N passos`.
+
+**Sobre usar o "cone de visão" (frustum) em vez do grafo:** frustum sozinho
+não adiciona nada — o Unity já faz frustum culling por `Renderer`, de graça,
+e o problema é justamente o que está *dentro* do cone mas *atrás de uma
+parede*. Mas frustum ajuda **por cima** do grafo, em granularidade de região:
+regiões além de `alwaysVisibleDepth` também precisam intersectar o frustum
+pra ficarem ligadas. Isso corta a sala que está a 2 portas de distância mas
+atrás da câmera, **sem** nunca piscar a sala vizinha (que fica ligada por
+profundidade, mesmo fora do cone) — que é de onde o pop-in viria.
+
+Só mexe em `Renderer.enabled`, nunca em `SetActive`: desligar o GameObject
+levaria junto os colliders, e o jogador atravessaria o chão de uma sala que
+ainda não "vê" mas na qual pode estar prestes a entrar.
+
+**Precisa de calibragem:** `visibleDepth` e `alwaysVisibleDepth`. Sintoma de
+valor baixo demais = dá pra ver sala aparecendo/sumindo (pop-in) enquanto
+anda. Valor alto demais = não economiza nada.
+
+**Plumbing que isso exigiu:** `TileInstancer.Build` agora preenche um
+`PiecesByCell` (peça instanciada por célula), exposto via `FloorFillResult` e
+`GeneratedFloor` — sem isso o consumidor teria que redescobrir a célula de
+cada peça pelo nome ou pela posição.
+
+## Mitigação originalmente proposta (histórico)
 
 Diferente do caso genérico, este projeto já tem a estrutura de dados certa
 pra um occlusion caseiro barato, porque o esqueleto já é um grafo de

@@ -30,13 +30,13 @@ public class GreyboxTileGenerator : EditorWindow
     // Regenerar com outro Cell Size troca o footprint de TODAS as peças e o andar
     // deixa de encaixar — o FloorSpec continuaria posicionando as células a cada 6 m.
     float cellSize       = 6f;    // largura/profundidade da célula (= Cell Size do grid)
-    float wallHeight     = 5f;    // altura das paredes
-    float wallThickness  = 0.2f;  // espessura das paredes
-    float floorThickness = 0.1f;  // espessura da laje de piso
+    float wallHeight     = 10f;   // altura das paredes
+    float wallThickness  = 0.6f;  // espessura das paredes
+    float floorThickness = 0.6f;  // espessura da laje de piso
     float doorRatio      = 0.35f; // largura do vão da porta (fração do Cell Size)
     float doorHeight     = 3.3f;  // altura do vão, em METROS — independente de Wall Height
-    float wallLightOffset = 0.25f; // distância do anchor de luz até o centro da parede (ver WallLight)
-    float wallLightHeightRatio = 0.7f; // altura do anchor de luz, fração de Wall Height
+    float wallLightOffset = 1.0f; // distância do anchor de luz até o centro da parede (ver WallLight)
+    float wallLightHeightRatio = 0.5f; // altura do anchor de luz, fração de Wall Height
     string outputFolder  = "Assets/WFC/GreyboxTiles";
 
     Material matFloor, matWall, matAccent;
@@ -292,6 +292,23 @@ public class GreyboxTileGenerator : EditorWindow
         }
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c);
         if (mat.HasProperty("_Color"))     mat.SetColor("_Color", c);
+
+        // Fosco de propósito: o default do URP/Lit é Smoothness 0.5, que reflete o skybox
+        // padrão como um espelho borrado — mais visível em ângulo raso (efeito Fresnel), que
+        // é bem perto do chão/canto de sala. Sem isso, sala "escura" ainda parece ter luz
+        // vazando do chão — não é luz nenhuma, é reflexo especular. Kit greybox não deveria
+        // brilhar de qualquer forma; arte de produção troca isso material por material depois.
+        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.05f);
+        if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.05f);
+
+        // GPU Instancing: um andar instancia centenas de peças que repetem malha+material,
+        // que é exatamente o caso que o instancing resolve. Ligado aqui (e não à mão no
+        // Inspector) porque estes materiais são GERADOS — marcar na mão se perderia na
+        // próxima regeração. Materiais de arte autorados fora daqui precisam do checkbox
+        // "Enable GPU Instancing" marcado manualmente.
+        mat.enableInstancing = true;
+
+        EditorUtility.SetDirty(mat);
         return mat;
     }
 

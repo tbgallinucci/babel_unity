@@ -51,8 +51,15 @@ namespace WFC.Runtime
         /// Layer aplicada em cascata na raiz e em cada peça instanciada (inclusive filhos).
         /// -1 = não mexe, mantém a layer que vier do prefab (comportamento antigo).
         /// </param>
+        /// <param name="piecesOut">
+        /// Opcional. Se vier um array de tamanho <c>variants.Length</c>, cada posição recebe
+        /// a peça instanciada naquela célula (null onde não houve geometria). É o que permite
+        /// ao jogo agrupar/ligar/desligar geometria por sala depois — sem isso o consumidor
+        /// teria que redescobrir a célula de cada peça pelo nome ou pela posição.
+        /// </param>
         public static Transform Build(Transform parent, TileSet tileSet, AnnotatedGrid grid,
-                                      int[] variants, List<SpawnAnchor> anchorsOut, int layer = -1)
+                                      int[] variants, List<SpawnAnchor> anchorsOut, int layer = -1,
+                                      Transform[] piecesOut = null)
         {
             ClearGenerated(parent);
 
@@ -81,6 +88,8 @@ namespace WFC.Runtime
                 // origem tiver no asset — daí forçar em cascata em vez de confiar
                 // no valor herdado.
                 if (layer >= 0) SetLayerRecursively(instance, layer);
+
+                if (piecesOut != null && cell < piecesOut.Length) piecesOut[cell] = instance.transform;
 
                 if (anchorsOut == null) continue;
 
