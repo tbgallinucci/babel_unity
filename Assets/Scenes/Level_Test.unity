@@ -20,13 +20,13 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 3
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -1126,6 +1126,8 @@ GameObject:
   - component: {fileID: 1123359630}
   - component: {fileID: 1123359629}
   - component: {fileID: 1123359628}
+  - component: {fileID: 1123359631}
+  - component: {fileID: 1123359632}
   m_Layer: 7
   m_Name: Level_Gen
   m_TagString: Untagged
@@ -1186,6 +1188,8 @@ MonoBehaviour:
   generator: {fileID: 1123359630}
   player: {fileID: 357341635}
   populator: {fileID: 1123359628}
+  lightingPopulator: {fileID: 1123359631}
+  propPopulator: {fileID: 1123359632}
   startingFloor: 1
   randomRunSeed: 1
   runSeed: 12345
@@ -1210,10 +1214,45 @@ MonoBehaviour:
   floorSpec: {fileID: 11400000, guid: c7221ea856ee6e2418b119275a9ddf3b, type: 2}
   bakeNavMesh: 1
   agentTypeId: 0
+  addCeiling: 1
+  ceilingMaterial: {fileID: 0}
+  ceilingOverhang: 0.5
   generatedLayerName: Environment
   validateConnectivity: 1
   connectivityRetries: 4
   logTimings: 1
+--- !u!114 &1123359631
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123359626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdf79ff20c5426a4794ad36a20a43640, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.BasicLightingPopulator
+  lightPrefab: {fileID: 0}
+  everyNWalls: 3
+  startOffset: 0
+  logSummary: 1
+--- !u!114 &1123359632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123359626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11f4a43602f6ff340a7474b2e071867b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.PropRoomPopulator
+  archetypes:
+  - {fileID: 11400000, guid: 5dc40a5d98c25054bb5b999ce5ac4c9b, type: 2}
+  safeRadiusFromEntrance: 6
+  logSummary: 1
 --- !u!4 &1259028881 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400098, guid: c0c5dd0275493e44d9ef7418695dd3cd, type: 3}
@@ -1818,6 +1857,10 @@ PrefabInstance:
     - target: {fileID: 9177111476650085358, guid: 73756c5392995ad4b8af2024bc92ad50, type: 3}
       propertyPath: m_Name
       value: Directional Light
+      objectReference: {fileID: 0}
+    - target: {fileID: 9177111476650085358, guid: 73756c5392995ad4b8af2024bc92ad50, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

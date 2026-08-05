@@ -32,8 +32,58 @@ Transform:
   - {fileID: 4272670465075294893}
   - {fileID: 8778586056669293955}
   - {fileID: 19333546468365281}
+  - {fileID: 5872764472648320008}
+  - {fileID: 7658723200614525403}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2039481510427798181
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7658723200614525403}
+  - component: {fileID: 3178014664268662747}
+  m_Layer: 0
+  m_Name: Anchor_Light_S
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7658723200614525403
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2039481510427798181}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 7, z: -2.65}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 127820898043009720}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3178014664268662747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2039481510427798181}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1d3554eecca4904f99c3f9d3123bb6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: WFC.Runtime::WFC.Runtime.SpawnAnchor
+  kind: 4
+  weight: 1
+  clearanceRadius: 0.3
+  cellIndex: -1
 --- !u!1 &2559292801161566153
 GameObject:
   m_ObjectHideFlags: 0
@@ -46,7 +96,7 @@ GameObject:
   - component: {fileID: 1262049613018768329}
   - component: {fileID: 2123642563620407357}
   - component: {fileID: 8532708131918235833}
-  m_Layer: 8
+  m_Layer: 0
   m_Name: Wall_S
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -62,8 +112,8 @@ Transform:
   m_GameObject: {fileID: 2559292801161566153}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.5, z: -2.9}
-  m_LocalScale: {x: 6, y: 5, z: 0.2}
+  m_LocalPosition: {x: 0, y: 5, z: -2.9}
+  m_LocalScale: {x: 6, y: 10, z: 0.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 127820898043009720}
@@ -158,7 +208,7 @@ GameObject:
   - component: {fileID: 3705868569274045118}
   - component: {fileID: 2371193310867647914}
   - component: {fileID: 1162848704072694948}
-  m_Layer: 7
+  m_Layer: 0
   m_Name: Floor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -258,6 +308,54 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &6052098704114933827
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5872764472648320008}
+  - component: {fileID: 613964493967268191}
+  m_Layer: 0
+  m_Name: Anchor_Light_N
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5872764472648320008
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6052098704114933827}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 0, y: 7, z: 2.65}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 127820898043009720}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &613964493967268191
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6052098704114933827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1d3554eecca4904f99c3f9d3123bb6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: WFC.Runtime::WFC.Runtime.SpawnAnchor
+  kind: 4
+  weight: 1
+  clearanceRadius: 0.3
+  cellIndex: -1
 --- !u!1 &6670155367346823666
 GameObject:
   m_ObjectHideFlags: 0
@@ -270,7 +368,7 @@ GameObject:
   - component: {fileID: 2597252989061430871}
   - component: {fileID: 5407558205040322846}
   - component: {fileID: 506320831980546028}
-  m_Layer: 8
+  m_Layer: 0
   m_Name: Wall_N
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -286,8 +384,8 @@ Transform:
   m_GameObject: {fileID: 6670155367346823666}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.5, z: 2.9}
-  m_LocalScale: {x: 6, y: 5, z: 0.2}
+  m_LocalPosition: {x: 0, y: 5, z: 2.9}
+  m_LocalScale: {x: 6, y: 10, z: 0.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 127820898043009720}

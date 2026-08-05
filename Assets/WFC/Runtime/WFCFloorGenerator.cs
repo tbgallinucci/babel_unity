@@ -40,6 +40,18 @@ namespace WFC.Runtime
         [Tooltip("Agent Type ID da NavMesh. 0 = Humanoid (o padrão).")]
         public int agentTypeId;
 
+        [Header("Teto")]
+        [Tooltip("Cria uma 'tampa' única (plane + collider) sobre o andar inteiro, na altura da parede " +
+                 "(cellHeight). Alternativa barata a modelar teto peça por peça: não participa do WFC, " +
+                 "é só um plano fechando a caixa depois que o andar já foi resolvido e instanciado.")]
+        public bool addCeiling = true;
+
+        [Tooltip("Material do teto. Vazio = material padrão (mesmo Standard/URP-Lit cinza do greybox).")]
+        public Material ceilingMaterial;
+
+        [Tooltip("Margem extra além do footprint do grid, para o teto sobrar um pouco além das paredes.")]
+        public float ceilingOverhang = 0.5f;
+
         [Header("Camada")]
         [Tooltip("Nome da Layer do Unity aplicada em cascata em todo o casco gerado (raiz + cada peça + " +
                  "filhos), independente da layer que o prefab de origem tiver no asset. Vazio = não mexe.")]
@@ -174,6 +186,9 @@ namespace WFC.Runtime
             floor.EntranceWorld = floor.Grid.CellToWorld(skeleton.EntranceCell);
             floor.StairsWorld = floor.Grid.CellToWorld(skeleton.StairsCell);
 
+            if (addCeiling && floor.Root != null)
+                BuildCeiling(floor, layer);
+
             // ---- 3. NavMesh --------------------------------------------------
             if (bakeNavMesh && floor.Root != null)
             {
@@ -202,6 +217,39 @@ namespace WFC.Runtime
 
             FloorGenerated?.Invoke(floor);
             onDone?.Invoke(floor);
+        }
+
+        /// <summary>
+        /// Uma "tampa" única (plane + collider) cobrindo o footprint inteiro do grid, na
+        /// altura do topo das paredes. Não participa do WFC — é geometria estática colada
+        /// por cima depois que o andar já foi resolvido, então nenhum socket/adjacência
+        /// precisa saber de teto. Troque por peças de verdade só se um dia precisar de
+        /// variação visual (viga, claraboia etc.); até lá isto fecha a caixa de graça.
+        /// </summary>
+        private void BuildCeiling(GeneratedFloor floor, int layer)
+        {
+            float width = floorSpec.gridSize.x * floorSpec.cellSize + 2f * ceilingOverhang;
+            float depth = floorSpec.gridSize.z * floorSpec.cellSize + 2f * ceilingOverhang;
+            float height = floorSpec.gridSize.y * floorSpec.cellHeight;
+
+            Vector3 center = transform.position + new Vector3(
+                floorSpec.gridSize.x * floorSpec.cellSize * 0.5f,
+                height,
+                floorSpec.gridSize.z * floorSpec.cellSize * 0.5f);
+
+            GameObject ceiling = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ceiling.name = "Ceiling";
+            ceiling.transform.SetParent(floor.Root, false);
+            ceiling.transform.position = center;
+            // Plane primitivo tem 10x10 unidades e a normal olha para +Y; giramos 180° em X
+            // para a face virada olhar para BAIXO (para dentro do andar).
+            ceiling.transform.rotation = Quaternion.Euler(180f, 0f, 0f);
+            ceiling.transform.localScale = new Vector3(width / 10f, 1f, depth / 10f);
+
+            var renderer = ceiling.GetComponent<MeshRenderer>();
+            if (ceilingMaterial != null) renderer.sharedMaterial = ceilingMaterial;
+
+            if (layer >= 0) ceiling.layer = layer;
         }
 
         /// <summary>Destrói o andar atual e libera a NavMesh dele.</summary>

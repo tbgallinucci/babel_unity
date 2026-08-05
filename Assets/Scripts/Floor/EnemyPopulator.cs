@@ -85,8 +85,16 @@ namespace Babel.Floor
         /// <summary>
         /// Popula o andar. O <paramref name="rng"/> vem do mesmo fluxo de seed do
         /// gerador, então a mesma seed reproduz também a distribuição de inimigos.
+        ///
+        /// <paramref name="archetypeByRoom"/> é opcional — passe o resultado de
+        /// <see cref="PropRoomPopulator.RollArchetypes"/> (chamado ANTES deste método) pra
+        /// respeitar <see cref="RoomArchetype.allowEnemies"/> e
+        /// <see cref="RoomArchetype.enemyDensityMultiplier"/> por sala. Sem isso (ou sala
+        /// sem entrada no dicionário), o comportamento é o de sempre: toda sala de Combate
+        /// é candidata, sem multiplicador.
         /// </summary>
-        public int Populate(GeneratedFloor floor, IRandom rng, Transform parent)
+        public int Populate(GeneratedFloor floor, IRandom rng, Transform parent,
+                            IReadOnlyDictionary<SkeletonGenerator.Room, RoomArchetype> archetypeByRoom = null)
         {
             Clear();
 
@@ -102,12 +110,23 @@ namespace Babel.Floor
             var candidates = new List<int>();
 
             // Contadores só para diagnóstico — sem eles "zero inimigos" não diz por quê.
-            int roomsSkippedEntrance = 0, roomsWithoutCandidates = 0;
+            int roomsSkippedRole = 0, roomsSkippedArchetype = 0, roomsWithoutCandidates = 0;
             int navMeshMisses = 0, tooCloseRejections = 0, noPrefabPicked = 0;
 
             foreach (SkeletonGenerator.Room room in floor.Rooms)
             {
-                if (room.Role == RoomRole.Entrada) { roomsSkippedEntrance++; continue; }
+                // Só sala de Combate. Antes disto o filtro era "qualquer coisa != Entrada",
+                // o que também soltava inimigo na sala da Escada e, agora que o esqueleto
+                // pode sortear outros papéis (roomRoleWeights), em qualquer arquétipo novo
+                // (Tesouro, etc.) — cada papel deveria ter seu próprio populador, não cair
+                // aqui por omissão.
+                if (room.Role != RoomRole.Combate) { roomsSkippedRole++; continue; }
+
+                RoomArchetype archetype = null;
+                archetypeByRoom?.TryGetValue(room, out archetype);
+
+                if (archetype != null && !archetype.allowEnemies)
+                { roomsSkippedArchetype++; continue; }
 
                 // Candidatas: piso aberto dentro do retângulo da sala.
                 candidates.Clear();
@@ -124,6 +143,8 @@ namespace Babel.Floor
                 if (candidates.Count == 0) { roomsWithoutCandidates++; continue; }
 
                 int wanted = Mathf.Min(maxPerRoom, RollCount(floor.FloorNumber, rng));
+                if (archetype != null && !Mathf.Approximately(archetype.enemyDensityMultiplier, 1f))
+                    wanted = Mathf.RoundToInt(wanted * archetype.enemyDensityMultiplier);
 
                 for (int i = 0; i < wanted; i++)
                 {
@@ -151,7 +172,8 @@ namespace Babel.Floor
             if (logSummary)
             {
                 Debug.Log($"[EnemyPopulator] Andar {floor.FloorNumber}: {spawned.Count} inimigo(s) " +
-                          $"em {floor.Rooms.Count} sala(s) ({roomsSkippedEntrance} entrada, " +
+                          $"em {floor.Rooms.Count} sala(s) ({roomsSkippedRole} fora do papel Combate, " +
+                          $"{roomsSkippedArchetype} bloqueada(s) por arquétipo (allowEnemies=false), " +
                           $"{roomsWithoutCandidates} sem célula aberta).", this);
 
                 // Zero spawns e algum contador suspeito != 0: é aqui que está o motivo.

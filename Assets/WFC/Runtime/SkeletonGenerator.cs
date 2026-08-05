@@ -100,11 +100,11 @@ namespace WFC.Runtime
             {
                 Room room = result.Rooms[i];
                 room.Region = AnnotatedGrid.FirstRoomRegion + i;
-                room.Role = RoomRole.Combate;
+                room.Role = RollRoomRole(settings, rng);
                 room.CenterCell = grid.Index(room.Center.x, y, room.Center.y);
 
                 ag.SetRegionBlock(room.Rect.xMin, room.Rect.yMin, room.Rect.xMax - 1, room.Rect.yMax - 1, y, room.Region);
-                ag.SetRoleBlock(room.Rect.xMin, y, room.Rect.yMin, room.Rect.xMax - 1, y, room.Rect.yMax - 1, RoomRole.Combate);
+                ag.SetRoleBlock(room.Rect.xMin, y, room.Rect.yMin, room.Rect.xMax - 1, y, room.Rect.yMax - 1, room.Role);
             }
 
             // ---- 2. MST + ciclos extras ------------------------------------
@@ -165,6 +165,35 @@ namespace WFC.Runtime
             }
 
             return rooms;
+        }
+
+        /// <summary>
+        /// Sorteio ponderado do papel de uma sala "normal", a partir de
+        /// <see cref="SkeletonSettings.roomRoleWeights"/>. Entrada e Escada são
+        /// reatribuídas depois em <see cref="AssignEntranceAndStairs"/> — este sorteio só
+        /// decide o elenco das salas que sobrarem. Lista vazia (ou peso total zero) =
+        /// sempre Combate, que é o comportamento antigo, sem lista nenhuma.
+        /// </summary>
+        private static RoomRole RollRoomRole(SkeletonSettings s, IRandom rng)
+        {
+            List<RoomRoleWeight> weights = s.roomRoleWeights;
+            if (weights == null || weights.Count == 0) return RoomRole.Combate;
+
+            float total = 0f;
+            foreach (RoomRoleWeight w in weights)
+                if (w != null && w.weight > 0f) total += w.weight;
+
+            if (total <= 0f) return RoomRole.Combate;
+
+            double roll = rng.NextDouble() * total;
+            foreach (RoomRoleWeight w in weights)
+            {
+                if (w == null || w.weight <= 0f) continue;
+                roll -= w.weight;
+                if (roll <= 0.0) return w.role;
+            }
+
+            return weights[weights.Count - 1].role; // guarda contra arredondamento no fim da soma
         }
 
         private static bool OverlapsAny(List<Room> rooms, RectInt candidate, int margin)

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Planning/Checklist - Pendencias Gerais.md",
+                "file": "Operational Manual/Como Criar um Tileset Alternativo.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Checklist - Pendencias Gerais"
+              "title": "Como Criar um Tileset Alternativo"
             }
           }
         ]
@@ -187,6 +187,10 @@
   },
   "active": "66705ce1a1b6f980",
   "lastOpenFiles": [
+    "Planning/Guide - Adicionar Modulo Pilar ao WFC Tileset.md",
+    "Operational Manual/Como Criar um Tileset Alternativo.md",
+    "Operational Manual",
+    "Planning/Checklist - Pendencias Gerais.md",
     "Planning/Guide - Trabalho Pendente (Consolidado).md",
     "Planning/WFC_Plugin_Plano_Prompt_4.md",
     "Planning/Finished/WFC_Plugin_Plano_Prompt_4.md",
@@ -200,7 +204,6 @@
     "Planning/Merged/Guide - Combate Fase 4 (Charged, Run Start-End, Sprint Heavy, Plunge).md",
     "Planning/Merged/Guide - Combate Aereo (Passo a Passo do Animator).md",
     "Planning/Merged/Guide - Combate Aereo (Jump, Launch e Ataques Leves).md",
-    "Planning/Checklist - Pendencias Gerais.md",
     "Planning/Merged",
     "Planning/Status - Estado Atual e Pendencias.md",
     "Planning/Guide - Combate Aereo (Passo a Passo do Animator).md",

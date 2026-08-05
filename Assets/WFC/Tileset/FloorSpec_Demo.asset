@@ -15,9 +15,9 @@ MonoBehaviour:
   tileSet: {fileID: 11400000, guid: de8408462539e424ba2635cc347b499e, type: 2}
   gridSize: {x: 24, y: 1, z: 24}
   cellSize: 6
-  cellHeight: 5
-  randomSeed: 0
-  seed: -1996087635
+  cellHeight: 10
+  randomSeed: 1
+  seed: 12345
   sealBorders: 1
   borderSocket: wall
   skeleton:
@@ -29,6 +29,7 @@ MonoBehaviour:
     placementAttempts: 60
     extraLoopChance: 0.15
     useDoors: 1
+    roomRoleWeights: []
   maxAttempts: 12
   entropyNoise: 0.0001
   roleRules:

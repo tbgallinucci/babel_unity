@@ -7,10 +7,24 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace WFC.Data
 {
+    /// <summary>
+    /// Um papel possível para uma sala "normal" (fora Entrada/Escada, que são
+    /// reatribuídas depois pelo SkeletonGenerator) e seu peso no sorteio.
+    /// </summary>
+    [Serializable]
+    public sealed class RoomRoleWeight
+    {
+        public RoomRole role = RoomRole.Combate;
+
+        [Tooltip("Peso relativo no sorteio. Maior = mais comum.")]
+        [Min(0.01f)] public float weight = 1f;
+    }
+
     [Serializable]
     public sealed class SkeletonSettings
     {
@@ -38,6 +52,16 @@ namespace WFC.Data
 
         [Tooltip("Cravar portas nas junções. Desligado, as junções viram vãos simples.")]
         public bool useDoors = true;
+
+        [Header("Papéis das salas")]
+        [Tooltip("Papéis possíveis para as salas 'normais' (sorteados por peso) e a chance relativa de " +
+                 "cada um. NÃO inclua Entrada/Corredor/Escada aqui — esses são atribuídos à parte, depois " +
+                 "do sorteio, e uma entrada acidental nesta lista vira uma sala comum com aquele papel, o " +
+                 "que o WFCFiller pode rejeitar como contradição se a regra de papel exigir uma peça " +
+                 "(ex.: Tile_Stairs) que não cabe numa sala aberta. Lista vazia = todas as salas viram " +
+                 "Combate, igual ao comportamento antigo. Para novos arquétipos (ex.: Tesouro, Elite), " +
+                 "acrescente o valor no enum RoomRole primeiro.")]
+        public List<RoomRoleWeight> roomRoleWeights = new List<RoomRoleWeight>();
 
         public static SkeletonSettings Default => new SkeletonSettings();
     }

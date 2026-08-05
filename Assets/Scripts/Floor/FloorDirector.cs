@@ -13,6 +13,7 @@
 // ============================================================================
 
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
 using WFC.Core;
@@ -31,6 +32,12 @@ namespace Babel.Floor
 
         [Tooltip("Opcional. Sem ele, os andares saem vazios.")]
         [SerializeField] private EnemyPopulator populator;
+
+        [Tooltip("Opcional. Sem ele, as paredes saem sem luminária nenhuma.")]
+        [SerializeField] private BasicLightingPopulator lightingPopulator;
+
+        [Tooltip("Opcional. Sem ele, salas de Combate saem sem prop nenhum.")]
+        [SerializeField] private PropRoomPopulator propPopulator;
 
         [Header("Run")]
         [Min(1)] [SerializeField] private int startingFloor = 1;
@@ -69,6 +76,8 @@ namespace Babel.Floor
         {
             generator = GetComponent<WFCFloorGenerator>();
             populator = GetComponent<EnemyPopulator>();
+            lightingPopulator = GetComponent<BasicLightingPopulator>();
+            propPopulator = GetComponent<PropRoomPopulator>();
         }
 
         private void Start()
@@ -117,6 +126,8 @@ namespace Babel.Floor
             // Limpa antes de gerar: os inimigos do andar velho não podem sobreviver à
             // troca, e o NavMesh antigo precisa sair de cena.
             if (populator != null) populator.Clear();
+            if (lightingPopulator != null) lightingPopulator.Clear();
+            if (propPopulator != null) propPopulator.Clear();
 
             // Seed por andar derivada da seed da run: a run inteira é reproduzível a
             // partir de um número só, e o andar 7 é sempre o mesmo andar 7.
@@ -137,11 +148,30 @@ namespace Babel.Floor
             PlacePlayer(floor);
             SpawnStairs(floor);
 
+            // Índice 2: o EnemyPopulator usa 1 (abaixo). Cada consumidor de RNG precisa da
+            // sua própria seed derivada, senão os sorteios de inimigo e de prop colidiriam.
+            // O sorteio de arquétipo por sala roda ANTES do EnemyPopulator de propósito —
+            // é o que permite RoomArchetype.allowEnemies/enemyDensityMultiplier valerem
+            // (loja sem monstro, santuário com menos inimigo etc.) sem os dois populadores
+            // se conhecerem: o FloorDirector é quem faz a ponte.
+            var propRng = new XorShiftRandom(WFCSolver.DeriveSeed(floorSeed, 2));
+            Dictionary<SkeletonGenerator.Room, RoomArchetype> archetypeByRoom = null;
+            if (propPopulator != null)
+                archetypeByRoom = propPopulator.RollArchetypes(floor, propRng);
+
             if (populator != null)
-                populator.Populate(floor, new XorShiftRandom(WFCSolver.DeriveSeed(floorSeed, 1)), floor.Root);
+                populator.Populate(floor, new XorShiftRandom(WFCSolver.DeriveSeed(floorSeed, 1)), floor.Root, archetypeByRoom);
             else
                 Debug.LogWarning("[FloorDirector] Campo 'Enemy Populator' vazio no Inspector — " +
                                  "o andar sai sem inimigos. Arraste o componente EnemyPopulator aqui.", this);
+
+            // Determinístico por geometria, não por sorteio — não precisa de seed derivada
+            // própria (ver comentário no BasicLightingPopulator).
+            if (lightingPopulator != null)
+                lightingPopulator.Populate(floor, floor.Root);
+
+            if (propPopulator != null)
+                propPopulator.Populate(floor, archetypeByRoom, propRng, floor.Root);
 
             IsGenerating = false;
 

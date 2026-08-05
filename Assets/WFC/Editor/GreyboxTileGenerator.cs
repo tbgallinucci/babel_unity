@@ -21,6 +21,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using WFC.Runtime;
 
 public class GreyboxTileGenerator : EditorWindow
 {
@@ -33,6 +34,9 @@ public class GreyboxTileGenerator : EditorWindow
     float wallThickness  = 0.2f;  // espessura das paredes
     float floorThickness = 0.1f;  // espessura da laje de piso
     float doorRatio      = 0.35f; // largura do vão da porta (fração do Cell Size)
+    float doorHeight     = 3.3f;  // altura do vão, em METROS — independente de Wall Height
+    float wallLightOffset = 0.25f; // distância do anchor de luz até o centro da parede (ver WallLight)
+    float wallLightHeightRatio = 0.7f; // altura do anchor de luz, fração de Wall Height
     string outputFolder  = "Assets/WFC/GreyboxTiles";
 
     Material matFloor, matWall, matAccent;
@@ -54,6 +58,21 @@ public class GreyboxTileGenerator : EditorWindow
         wallThickness  = EditorGUILayout.FloatField("Wall Thickness", wallThickness);
         floorThickness = EditorGUILayout.FloatField("Floor Thickness", floorThickness);
         doorRatio      = EditorGUILayout.Slider("Door Opening (ratio)", doorRatio, 0.15f, 0.7f);
+        doorHeight     = EditorGUILayout.FloatField(
+            new GUIContent("Door Opening Height", "Altura do vão em metros — fixa, NÃO acompanha Wall Height. " +
+                            "Precisa ser menor que Wall Height (o resto vira verga)."),
+            doorHeight);
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Anchor de luz de parede", EditorStyles.boldLabel);
+        wallLightOffset = EditorGUILayout.FloatField(
+            new GUIContent("Wall Light Offset", "Distância do anchor até o centro da parede, em metros. " +
+                            "Ajuste pra bater com o quanto o prefab da tocha precisa recuar da parede."),
+            wallLightOffset);
+        wallLightHeightRatio = EditorGUILayout.Slider(
+            new GUIContent("Wall Light Height", "Altura do anchor, como fração de Wall Height (0 = piso, 1 = teto)."),
+            wallLightHeightRatio, 0f, 1f);
+
         outputFolder   = EditorGUILayout.TextField("Output Folder", outputFolder);
 
         EditorGUILayout.Space();
@@ -101,6 +120,25 @@ public class GreyboxTileGenerator : EditorWindow
     GameObject WallWest (Transform p) => Cube("Wall_W", new Vector3(-S * 0.5f + T * 0.5f, H * 0.5f, 0), new Vector3(T, H, S), matWall, p);
     GameObject WallEast (Transform p) => Cube("Wall_E", new Vector3( S * 0.5f - T * 0.5f, H * 0.5f, 0), new Vector3(T, H, S), matWall, p);
 
+    // Marca "cabe luz de parede aqui" para o BasicLightingPopulator (jogo). O plugin só
+    // planta o anchor; quem decide se acende luz ali — respeitando espaçamento e as
+    // paredes de canto/beco, que nunca ganham este anchor — é o populador.
+    // `facePos` é o centro XZ da parede (mesmo valor usado no Cube da parede); `inward`
+    // é a direção para dentro da sala, usada tanto para afastar o anchor da parede quanto
+    // para orientar a luz.
+    GameObject WallLight(Transform parent, string name, Vector3 facePos, Vector3 inward)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = new Vector3(facePos.x, H * wallLightHeightRatio, facePos.z) + inward * wallLightOffset;
+        go.transform.localRotation = Quaternion.LookRotation(inward, Vector3.up);
+
+        var anchor = go.AddComponent<SpawnAnchor>();
+        anchor.kind = SpawnAnchorKind.Light;
+        anchor.clearanceRadius = 0.3f;
+        return go;
+    }
+
     void BuildFloorOpen()
     {
         var root = Root("Tile_Floor_Open");
@@ -112,10 +150,14 @@ public class GreyboxTileGenerator : EditorWindow
         var root = Root("Tile_Wall");
         Floor().transform.SetParent(root.transform, false);
         WallNorth(root.transform);
+        WallLight(root.transform, "Anchor_Light_N", new Vector3(0, 0, S * 0.5f - T * 0.5f), Vector3.back);
         Save(root);
     }
     void BuildCorner()
     {
+        // De propósito SEM anchor de luz: parede em quina é a regra "nunca em canto"
+        // do BasicLightingPopulator satisfeita de graça — se a peça não tem anchor,
+        // não tem onde a luz nascer.
         var root = Root("Tile_Corner");
         Floor().transform.SetParent(root.transform, false);
         WallNorth(root.transform); WallWest(root.transform);
@@ -126,6 +168,9 @@ public class GreyboxTileGenerator : EditorWindow
         var root = Root("Tile_Corridor");
         Floor().transform.SetParent(root.transform, false);
         WallNorth(root.transform); WallSouth(root.transform);
+        // Paredes paralelas (Norte/Sul) — o caso "corredor" da regra de luz.
+        WallLight(root.transform, "Anchor_Light_N", new Vector3(0, 0, S * 0.5f - T * 0.5f), Vector3.back);
+        WallLight(root.transform, "Anchor_Light_S", new Vector3(0, 0, -S * 0.5f + T * 0.5f), Vector3.forward);
         Save(root);
     }
     void BuildDeadEnd()
@@ -153,6 +198,10 @@ public class GreyboxTileGenerator : EditorWindow
         DoorWallNorth(root.transform);
         WallWest(root.transform);
         WallEast(root.transform);
+        // Paredes paralelas Oeste/Leste (a porta fica na Norte — sem anchor ali,
+        // luz em cima do vão da porta não faz sentido).
+        WallLight(root.transform, "Anchor_Light_W", new Vector3(-S * 0.5f + T * 0.5f, 0, 0), Vector3.right);
+        WallLight(root.transform, "Anchor_Light_E", new Vector3(S * 0.5f - T * 0.5f, 0, 0), Vector3.left);
         Save(root);
     }
 
@@ -163,9 +212,18 @@ public class GreyboxTileGenerator : EditorWindow
         float segW = (S - gap) * 0.5f;           // largura de cada meia-parede
         float segCx = (gap + segW) * 0.5f;       // centro X de cada segmento
         float zc = S * 0.5f - T * 0.5f;          // borda norte
+
+        // Vão em metros ABSOLUTOS, não fração de H — Wall Height só decide onde a
+        // verga (o que sobra até o teto) começa, não a altura de passagem em si.
+        // Clamp: se doorHeight >= H (paredes baixas com vão configurado alto), a
+        // verga vira uma tira mínima em vez de altura negativa/geometria invertida.
+        float doorH = Mathf.Min(doorHeight, H - 0.05f);
+        float lintelH = H - doorH;
+        float lintelCy = doorH + lintelH * 0.5f;
+
         Cube("Wall_N_L", new Vector3(-segCx, H * 0.5f, zc), new Vector3(segW, H, T), matWall, parent);
         Cube("Wall_N_R", new Vector3( segCx, H * 0.5f, zc), new Vector3(segW, H, T), matWall, parent);
-        Cube("Lintel", new Vector3(0, H * 0.83f, zc), new Vector3(gap, H * 0.34f, T), matAccent, parent);
+        Cube("Lintel", new Vector3(0, lintelCy, zc), new Vector3(gap, lintelH, T), matAccent, parent);
     }
     void BuildStairs()
     {
