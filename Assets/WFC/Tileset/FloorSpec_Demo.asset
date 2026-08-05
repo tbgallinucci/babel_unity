@@ -17,7 +17,7 @@ MonoBehaviour:
   cellSize: 6
   cellHeight: 5
   randomSeed: 0
-  seed: -1354673281
+  seed: -1996087635
   sealBorders: 1
   borderSocket: wall
   skeleton:

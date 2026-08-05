@@ -65,6 +65,17 @@ namespace Babel.Floor
 
         [SerializeField] private bool logSummary = true;
 
+        // O botão "+" do Inspector para List<> customizada às vezes não aplica os
+        // valores padrão do C# (weight = 1f) — o elemento novo nasce com Weight 0,
+        // e como PickPrefab soma os pesos e desiste se o total for 0, o inimigo
+        // nunca é sorteado, sem erro nenhum. Corrige aqui, de graça, toda vez que
+        // o Inspector muda.
+        private void OnValidate()
+        {
+            foreach (EnemyEntry e in enemies)
+                if (e != null && e.weight <= 0f) e.weight = 1f;
+        }
+
         /// <summary>Inimigos vivos do andar atual.</summary>
         public int LivingCount { get; private set; }
 
@@ -90,9 +101,13 @@ namespace Babel.Floor
             AnnotatedGrid grid = floor.Grid;
             var candidates = new List<int>();
 
+            // Contadores só para diagnóstico — sem eles "zero inimigos" não diz por quê.
+            int roomsSkippedEntrance = 0, roomsWithoutCandidates = 0;
+            int navMeshMisses = 0, tooCloseRejections = 0, noPrefabPicked = 0;
+
             foreach (SkeletonGenerator.Room room in floor.Rooms)
             {
-                if (room.Role == RoomRole.Entrada) continue;
+                if (room.Role == RoomRole.Entrada) { roomsSkippedEntrance++; continue; }
 
                 // Candidatas: piso aberto dentro do retângulo da sala.
                 candidates.Clear();
@@ -106,14 +121,14 @@ namespace Babel.Floor
                     candidates.Add(cell);
                 }
 
-                if (candidates.Count == 0) continue;
+                if (candidates.Count == 0) { roomsWithoutCandidates++; continue; }
 
                 int wanted = Mathf.Min(maxPerRoom, RollCount(floor.FloorNumber, rng));
 
                 for (int i = 0; i < wanted; i++)
                 {
                     GameObject prefab = PickPrefab(floor.FloorNumber, rng);
-                    if (prefab == null) continue;
+                    if (prefab == null) { noPrefabPicked++; continue; }
 
                     int cell = candidates[rng.NextInt(candidates.Count)];
                     Vector3 point = grid.CellToWorld(cell);
@@ -121,9 +136,9 @@ namespace Babel.Floor
                     // Sem NavMesh embaixo, o NavMeshAgent nasce inválido e o inimigo
                     // fica plantado. Melhor não spawnar.
                     if (!NavMeshBuilderService.TrySnapToNavMesh(point, navMeshSampleDistance, out Vector3 snapped))
-                        continue;
+                    { navMeshMisses++; continue; }
 
-                    if (TooClose(snapped)) continue;
+                    if (TooClose(snapped)) { tooCloseRejections++; continue; }
 
                     GameObject instance = Instantiate(prefab, snapped, RandomYaw(rng), parent);
                     instance.name = $"{prefab.name} (andar {floor.FloorNumber})";
@@ -134,8 +149,24 @@ namespace Babel.Floor
             }
 
             if (logSummary)
+            {
                 Debug.Log($"[EnemyPopulator] Andar {floor.FloorNumber}: {spawned.Count} inimigo(s) " +
-                          $"em {floor.Rooms.Count} sala(s).", this);
+                          $"em {floor.Rooms.Count} sala(s) ({roomsSkippedEntrance} entrada, " +
+                          $"{roomsWithoutCandidates} sem célula aberta).", this);
+
+                // Zero spawns e algum contador suspeito != 0: é aqui que está o motivo.
+                if (spawned.Count == 0 && floor.Rooms.Count > 0)
+                {
+                    Debug.LogWarning(
+                        "[EnemyPopulator] Zero inimigos. Motivo provável: " +
+                        $"{roomsWithoutCandidates} sala(s) sem célula aberta o bastante " +
+                        $"(safeRadiusFromEntrance={safeRadiusFromEntrance}m pode estar cobrindo a sala inteira), " +
+                        $"{navMeshMisses} amostra(s) de NavMesh falharam " +
+                        "(NavMesh não bakeou ali — confira se 'Bake Nav Mesh' está ligado no WFC Floor Generator), " +
+                        $"{tooCloseRejections} rejeitada(s) por espaçamento, " +
+                        $"{noPrefabPicked} sem prefab sorteado (lista 'Elenco' vazia ou com Weight 0).", this);
+                }
+            }
 
             return spawned.Count;
         }

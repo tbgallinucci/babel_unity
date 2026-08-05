@@ -139,6 +139,9 @@ namespace Babel.Floor
 
             if (populator != null)
                 populator.Populate(floor, new XorShiftRandom(WFCSolver.DeriveSeed(floorSeed, 1)), floor.Root);
+            else
+                Debug.LogWarning("[FloorDirector] Campo 'Enemy Populator' vazio no Inspector — " +
+                                 "o andar sai sem inimigos. Arraste o componente EnemyPopulator aqui.", this);
 
             IsGenerating = false;
 

@@ -56,6 +56,49 @@ namespace Babel.Combat
         // acontece — é isso que deixa o parâmetro entrar no projeto antes de
         // qualquer clipe novo existir, sem mudar comportamento nenhum.
         public const string Lunge = "Lunge";
+        // Mesmo idioma do Lunge acima: quem dirige o valor é uma curva chamada
+        // "ForwardMomentum" dentro do clipe de SprintHeavyAttack1 (Import
+        // Settings -> Animation -> Curves), não código. 1 no início do golpe
+        // (mantém a velocidade cheia da corrida) descendo suavemente até 0 —
+        // é o fator que OnAnimatorMove multiplica pela velocidade de sprint
+        // CAPTURADA na entrada do golpe (ver capturedSprintMomentumSpeed).
+        // Clipe sem a curva não contribui (fica 0), mesmo raciocínio de
+        // segurança do Lunge.
+        public const string ForwardMomentum = "ForwardMomentum";
+
+        // Mesmo idioma do ComboQueued/StrongComboQueued: bool persistente,
+        // não trigger. Attack1 dispara igual sempre (no aperto, sem
+        // mudança) — segurar o botão além de chargeAttackHoldThreshold
+        // enquanto ele toca marca esta fila, e a transição
+        // Attack1 -> Attack1Charged no Animator (Has Exit Time, igual
+        // Attack1 -> Attack2) consome ela no fim natural do golpe leve. Não
+        // depende de soltar o botão — é um ENCADEAMENTO, não uma escolha
+        // feita na soltura.
+        public const string ChargeQueued = "ChargeQueued";
+        // Bool "segurando o botão além do piso de carga" — só existe pra
+        // alimentar uma pose/efeito de antecipação no Animator (ex.: um
+        // brilho na arma, um leve slow-down) enquanto Attack1 ainda toca e a
+        // carga já foi atingida. O C# não lê isso de volta.
+        public const string IsCharging = "IsCharging";
+
+        // Triggers das transições de embalo da locomoção (ver o comentário
+        // de cabeçalho da seção em PlayerController) — disparados na BORDA de
+        // início/fim de movimento e de saída do sprint, não todo frame.
+        public const string RunStart = "RunStart";
+        public const string RunEnd = "RunEnd";
+        public const string SprintEnd = "SprintEnd";
+
+        // Ataque pesado disparado DIRETO do sprint (não é um branch do combo
+        // de chão — não passa por ComboQueued/StrongComboQueued). Trigger
+        // próprio pelo mesmo motivo do Jump/JumpStart: o nome do trigger e o
+        // nome do estado de destino não precisam (e aqui não devem) ser
+        // iguais.
+        public const string SprintHeavyAttack = "SprintHeavyAttack";
+
+        // Plunge attack — trigger próprio, dispara a partir de qualquer
+        // estado aéreo (AirLoop/JumpStart/AirAttack1/AirAttack2) pra
+        // AirHeavyAttack1.
+        public const string PlungeAttack = "PlungeAttack";
 
         // -- Tags -------------------------------------------------------------
         // "Attack" serve tanto de nome de Trigger (SetTrigger) quanto de tag
@@ -65,6 +108,11 @@ namespace Babel.Combat
         public const string Dodging = "Dodging";
 
         // -- Nomes de estado ----------------------------------------------------
+        // Só existe aqui pro reset dedicado do ataque carregado (ver o
+        // comentário em HandleAttack) — o resto do código sempre falou com
+        // o combo de chão só por tag ("Attack"), nunca precisou distinguir
+        // Attack1 dos outros hits antes disso.
+        public const string Attack1 = "Attack1";
         public const string Attack1Alt1 = "Attack1Alt1";
         public const string Attack1Alt2 = "Attack1Alt2";
         public const string Attack2Alt = "Attack2Alt";
@@ -76,6 +124,17 @@ namespace Babel.Combat
         // tag — não dá pra ser "Attack" e "AirAttack" ao mesmo tempo.
         public const string AirAttack1 = "AirAttack1";
         public const string AirAttack2 = "AirAttack2";
+        // Ataque carregado (golpe pesado a partir do neutro, ver
+        // GreatSword_SPAttack2_Root). Tag "Attack" também — mesmo motivo dos
+        // dois acima.
+        public const string Attack1Charged = "Attack1Charged";
+        // Ataque pesado a partir do sprint. Tag "Attack".
+        public const string SprintHeavyAttack1 = "SprintHeavyAttack1";
+        // Plunge: queda (AirHeavyAttack1, tag "Attack") e impacto
+        // (AirHeavyAttack2, tag "Attack"). Por NOME, mesmo motivo dos outros
+        // ataques aéreos.
+        public const string AirHeavyAttack1 = "AirHeavyAttack1";
+        public const string AirHeavyAttack2 = "AirHeavyAttack2";
 
         // -- Layers -------------------------------------------------------------
         public const string UpperBody = "UpperBody";

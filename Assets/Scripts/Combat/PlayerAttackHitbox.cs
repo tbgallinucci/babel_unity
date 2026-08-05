@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Babel.Combat
@@ -162,6 +163,27 @@ namespace Babel.Combat
         {
             Vector3 origin = transform.position + Vector3.up * hitHeight;
             ApplyHit(origin, radialHitRadius, 360f, evt, radial: true, upwardForce: 0f);
+        }
+
+        // Impacto do plunge attack (Air Heavy Attack 2): mesma geometria
+        // radial do golpe giratório (OverlapSphere 360° centrado no player),
+        // porque o impacto tem que pegar todo mundo em volta do ponto de
+        // pouso, não só quem está na frente.
+        //
+        // Não é este script que sabe desligar a colisão jogador-inimigo nem
+        // soltar o alvo carregado no socket — isso é estado do
+        // PlayerController (Physics.IgnoreLayerCollision, KnockbackReceiver
+        // ancorado). Repassa por evento C#, mesmo idioma do
+        // WeaponEquipController.JumpTakeOff: o Animation Event tem que cair
+        // neste GameObject (o do Animator), não na raiz onde mora o
+        // PlayerController.
+        public event Action<AnimationEvent> PlungeImpact;
+
+        public void OnPlungeImpact(AnimationEvent evt)
+        {
+            Vector3 origin = transform.position + Vector3.up * hitHeight;
+            ApplyHit(origin, radialHitRadius, 360f, evt, radial: true, upwardForce: 0f);
+            PlungeImpact?.Invoke(evt);
         }
 
         private void ApplyHit(Vector3 origin, float radius, float angle, AnimationEvent evt,

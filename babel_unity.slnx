@@ -5,4 +5,5 @@
   <Project Path="WFC.Tests.csproj" />
   <Project Path="WFC.Editor.csproj" />
   <Project Path="WFC.Core.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

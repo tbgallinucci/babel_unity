@@ -1,4 +1,6 @@
 
+using System;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Babel.Equipment;
@@ -244,6 +246,56 @@ namespace Babel.Player
         // com as transições em Has Exit Time OFF.
         [SerializeField, Range(0f, 1f)] private float comboWindowStart = 0.2f;
 
+        [Header("Ataque carregado")]
+        // Attack1 dispara igual sempre, no APERTO — isso não muda. O que
+        // este campo controla é só o encadeamento: segurando o botão
+        // enquanto Attack1 ainda toca, por pelo menos este tanto de tempo
+        // (contado desde o aperto), o combo continua automaticamente pro
+        // Attack1Charged (o golpe pesado) no fim natural do Attack1 — sem
+        // precisar soltar e apertar de novo. Soltar antes disso é só um
+        // toque normal, sem golpe extra.
+        [SerializeField] private float chargeAttackHoldThreshold = 0.35f;
+
+        [Header("Locomoção — Run/Sprint Start-End")]
+        // Abaixo disso não conta como "andando" pro disparo de RunStart/
+        // RunEnd — mesmo piso que HandleMovement já usa pro Speed/rotação.
+        [SerializeField] private float locomotionMoveThreshold = 0.05f;
+
+        [Header("Sprint Heavy Attack (ataque em movimento)")]
+        // Ver o comentário da curva ForwardMomentum em AnimStrings — este
+        // campo aqui é só o baseline que ela escala: a velocidade de sprint
+        // capturada no instante em que o golpe começa, não recalculada
+        // depois (senão o próprio golpe, que quase não anda via root
+        // motion, contaminaria a leitura no meio do swing).
+        private float capturedSprintMomentumSpeed;
+
+        [Header("Plunge Attack (Air Heavy)")]
+        // Velocidade de queda, constante — substitui a gravidade normal por
+        // completo enquanto o AirHeavyAttack1 estiver tocando (ver
+        // OnAnimatorMove). Não integra, não acelera: é o "rápido e reto pra
+        // baixo" que separa isso de uma queda livre comum.
+        [SerializeField] private float plungeFallSpeed = 28f;
+        // Alcance pra escolher quem fica pendurado na espada durante a
+        // queda, quando NÃO há alvo travado no lock-on. Com lock-on ativo, o
+        // alvo travado sempre ganha — ver FindPlungeCarryTarget.
+        [SerializeField] private float plungeMagnetRange = 12f;
+        // Geometria da "carrier box": esfera sob o player, checada TODO
+        // frame de queda — quem estiver dentro (e não for o alvo já
+        // ancorado no socket) recebe a mesma velocidade de descida, pra
+        // acompanhar visualmente o golpe sem ficar pra trás.
+        [SerializeField] private float plungeImpactRadius = 3f;
+        [SerializeField] private float plungeImpactHeight = 1f;
+        [SerializeField] private LayerMask plungeImpactMask;
+        // Nome da layer usada pra desligar a colisão jogador-inimigo durante
+        // a queda (Physics.IgnoreLayerCollision) — string e não int direto
+        // pra não depender da ordem das layers no projeto.
+        [SerializeField] private string enemyLayerName = "Enemy";
+        // Opcional: sacode a câmera na entrada da queda e (mais forte, ver
+        // HandlePlungeImpact) no impacto. Sem CinemachineImpulseSource
+        // atribuído, o plunge funciona igual, só sem o shake.
+        [SerializeField] private CinemachineImpulseSource plungeStartImpulse;
+        [SerializeField] private CinemachineImpulseSource plungeImpactImpulse;
+
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private string actionMapName = "Player";
@@ -325,6 +377,32 @@ namespace Babel.Player
         private int previousStateHash;
         private int upperBodyLayerIndex;
 
+        // -- Ataque carregado --------------------------------------------------
+        // "Ainda dentro do aperto que disparou o Attack1, rastreando se vai
+        // segurar até o piso de carga" — ver o bloco dedicado em
+        // HandleAttack(). Diferente de chargeQueued: aquele é a INTENÇÃO já
+        // confirmada (o piso foi cruzado), lida pelo Animator; este é só o
+        // cronômetro interno enquanto ainda não se sabe.
+        private bool chargingAttack;
+        private float chargeElapsed;
+        private bool chargeQueued;
+
+        // -- Locomoção Run/Sprint Start-End ------------------------------------
+        // Bordas de "estava andando"/"estava sprintando" no frame anterior,
+        // só pra disparar RunStart/RunEnd/SprintEnd uma vez por transição —
+        // mesmo idioma do wasDodging/wasAirAttacking.
+        private bool wasMovingGrounded;
+        private bool wasSprintingGrounded;
+
+        // -- Sprint Heavy Attack -------------------------------------------------
+        private bool wasSprintHeavyAttacking;
+
+        // -- Plunge Attack -------------------------------------------------------
+        private bool wasPlungeFalling;
+        private KnockbackReceiver plungeCarriedKnockback;
+        private int enemyLayerIndex;
+        private PlayerAttackHitbox attackHitbox;
+
         // Stub pro futuro sistema de dano — só a janela de invulnerabilidade
         // calculada, sem nenhum consumidor ainda.
         public bool IsDodgeInvulnerable { get; private set; }
@@ -343,7 +421,9 @@ namespace Babel.Player
             weaponEquip = GetComponentInChildren<WeaponEquipController>();
             targeting = GetComponent<TargetingSystem>();
             health = GetComponent<HealthComponent>();
+            attackHitbox = GetComponentInChildren<PlayerAttackHitbox>();
             upperBodyLayerIndex = animator.GetLayerIndex(AnimStrings.UpperBody);
+            enemyLayerIndex = LayerMask.NameToLayer(enemyLayerName);
 
             var playerMap = inputActions.FindActionMap(actionMapName, throwIfNotFound: true);
             moveAction = playerMap.FindAction("Move");
@@ -375,6 +455,14 @@ namespace Babel.Player
             {
                 weaponEquip.JumpTakeOff += ApplyJumpImpulse;
             }
+
+            // Ver o comentário de PlayerAttackHitbox.PlungeImpact: o
+            // Animation Event cai lá (mesmo GameObject do Animator), não
+            // aqui.
+            if (attackHitbox != null)
+            {
+                attackHitbox.PlungeImpact += HandlePlungeImpact;
+            }
         }
 
         private void OnDisable()
@@ -382,6 +470,11 @@ namespace Babel.Player
             if (weaponEquip != null)
             {
                 weaponEquip.JumpTakeOff -= ApplyJumpImpulse;
+            }
+
+            if (attackHitbox != null)
+            {
+                attackHitbox.PlungeImpact -= HandlePlungeImpact;
             }
 
             moveAction.Disable();
@@ -406,6 +499,7 @@ namespace Babel.Player
             HandleStrongAttack();
             HandleMovement();
             HandleSprint();
+            HandleLocomotionTransitions();
             HandleJump();
             HandleDodge();
             animator.SetFloat(AnimStrings.CombatSpeedMultiplier, combatSpeedMultiplier);
@@ -486,9 +580,31 @@ namespace Babel.Player
         // (IsStrongAttacking() trava a rotação durante ele).
         private bool IsInCommittedAttack()
         {
+            // Attack1Charged e SprintHeavyAttack1 NÃO entram aqui — são só
+            // golpes pesados, sem nenhum motivo de design pra travar o
+            // dodge (ao contrário do launcher, que precisa conectar antes
+            // de poder ser cancelado, ou dos chutes). Eles cancelam pelo
+            // caminho normal: trigger cru + o AnyState -> Dodge global do
+            // Base Layer, igual Attack1/2/3 — nenhuma transição extra
+            // precisa existir pra eles no Animator.
+            //
+            // Colocar os dois aqui numa versão anterior foi bug: sem
+            // transição de saída condicionada em DodgeQueued nesses dois
+            // estados, a intenção ficava marcada e nunca disparava — o
+            // dodge-cancel simplesmente não saía.
             return AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt1)
                 || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Alt2)
                 || AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack2Alt);
+        }
+
+        // "Está caindo no plunge attack (AirHeavyAttack1), no ar?" — mesmo
+        // idioma/motivo do IsAirAttacking(): semântica EFETIVA (conta desde
+        // o início do crossfade de entrada) e gate de chão à parte no
+        // chamador, pelo mesmo motivo (pode pousar um frame antes do
+        // Animator resolver a saída).
+        private bool IsPlungeFalling()
+        {
+            return AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.AirHeavyAttack1);
         }
 
         // Os dois ataques aéreos. Por NOME de estado e não por tag pelo motivo
@@ -572,6 +688,71 @@ namespace Babel.Player
             return toTarget.normalized * step;
         }
 
+        // Quem fica ancorado no socket da espada durante a queda do plunge.
+        // Preferência: o alvo TRAVADO no lock-on, se houver um (é o que o
+        // pedido original chama de "alvo do magnet/lock-on") — senão, o
+        // Targetable com KnockbackReceiver mais próximo dentro de
+        // plungeMagnetRange. Sem exigir IsAirborne (diferente do magnet do
+        // combo aéreo): aqui o alvo está no CHÃO antes do plunge pegar ele,
+        // é o próprio plunge que vai levantar.
+        private Transform FindPlungeCarryTarget(out KnockbackReceiver knockback)
+        {
+            knockback = null;
+
+            if (targeting != null && targeting.IsLocked && targeting.CurrentTarget != null)
+            {
+                KnockbackReceiver lockedKnockback = targeting.CurrentTarget.GetComponent<KnockbackReceiver>();
+                if (lockedKnockback != null)
+                {
+                    knockback = lockedKnockback;
+                    return targeting.CurrentTarget.AimPoint;
+                }
+            }
+
+            Transform best = null;
+            float bestSqrDistance = plungeMagnetRange * plungeMagnetRange;
+
+            foreach (Targetable candidate in FindObjectsByType<Targetable>(FindObjectsSortMode.None))
+            {
+                KnockbackReceiver candidateKnockback = candidate.GetComponent<KnockbackReceiver>();
+                if (candidateKnockback == null)
+                {
+                    continue;
+                }
+
+                float sqrDistance = (candidate.AimPoint.position - transform.position).sqrMagnitude;
+                if (sqrDistance < bestSqrDistance)
+                {
+                    bestSqrDistance = sqrDistance;
+                    best = candidate.AimPoint;
+                    knockback = candidateKnockback;
+                }
+            }
+
+            return best;
+        }
+
+        // Assinado no PlayerAttackHitbox.PlungeImpact (Animation Event
+        // OnPlungeImpact, no clipe AirHeavyAttack2). Na prática a borda de
+        // pouso em OnAnimatorMove já religou a colisão e soltou o carry
+        // antes disso rodar (ver o comentário lá) — isto é o cinto de
+        // segurança null-safe, não o caminho principal. O dano radial do
+        // impacto (ApplyHit) já foi aplicado por PlayerAttackHitbox ANTES de
+        // disparar este evento, então o alvo (já solto ou ainda pendurado,
+        // tanto faz) recebe o golpe normalmente.
+        private void HandlePlungeImpact(AnimationEvent evt)
+        {
+            if (enemyLayerIndex >= 0)
+            {
+                Physics.IgnoreLayerCollision(gameObject.layer, enemyLayerIndex, false);
+            }
+
+            plungeCarriedKnockback?.EndCarry();
+            plungeCarriedKnockback = null;
+
+            plungeImpactImpulse?.GenerateImpulse();
+        }
+
         // Gira o personagem pro alvo travado no instante em que um golpe é
         // disparado — é o que faz "os ataques ficarem mais direcionados" pro
         // inimigo lockado sem precisar de uma blend tree de strafe 8-direcional
@@ -630,6 +811,32 @@ namespace Babel.Player
                 previousStateHash = effectiveHash;
             }
 
+            // Reset do rastreio/fila de carga — DELIBERADAMENTE fora do
+            // bloco genérico acima, e não por troca de hash. chargingAttack
+            // é setado no MESMO frame em que o trigger Attack dispara (ver
+            // abaixo), mas o Animator só termina de registrar a transição
+            // Locomotion -> Attack1 no frame SEGUINTE — nesse frame,
+            // effectiveHash muda (a versão "efetiva" já aponta pro Attack1
+            // de destino), e o reset genérico teria apagado a carga um
+            // frame depois de tê-la armado, sempre, não importa quanto
+            // tempo o jogador segurasse (bug real, encontrado em teste:
+            // Attack1 travava no último frame com o botão segurado porque
+            // nenhuma condição de saída nunca chegava a ficar verdadeira).
+            //
+            // Em vez de reagir à troca de hash, reage a SAIR da família
+            // Attack1/Attack1Charged — cobre entrar em Attack1 (ainda
+            // dentro da família, não reseta) e emendar Attack1 ->
+            // Attack1Charged (idem), mas reseta de verdade se o combo foi
+            // pra outro lugar (Attack2 via ComboQueued, Dodge cancelando o
+            // golpe leve, etc.).
+            if ((chargingAttack || chargeQueued)
+                && !AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1)
+                && !AnimatorStateUtil.HasStateNowOrIncoming(animator, 0, AnimStrings.Attack1Charged))
+            {
+                chargingAttack = false;
+                chargeQueued = false;
+            }
+
             if (attackAction.WasPressedThisFrame())
             {
                 // Durante o roll o ataque ENFILEIRA, não dispara. Antes esse
@@ -669,12 +876,56 @@ namespace Babel.Player
                     // o ataque já foi resolvido com Sprint ainda true antes do
                     // toggle cair.
                     pendingSprintCancel = true;
+
+                    // Ataque carregado: começa a rastrear ESTE aperto. Se o
+                    // jogador segurar o botão até chargeAttackHoldThreshold
+                    // enquanto o Attack1 ainda está tocando, o combo encadeia
+                    // sozinho pro Attack1Charged (ver o bloco logo abaixo) —
+                    // não precisa soltar e apertar de novo.
+                    chargingAttack = true;
+                    chargeElapsed = 0f;
+                    chargeQueued = false;
+                    animator.SetBool(AnimStrings.IsCharging, false);
                 }
                 else
                 {
                     comboQueued = true;
                 }
             }
+
+            // Resolve o rastreio de carga: enquanto o botão continuar
+            // pressionado, acumula tempo; ao cruzar o piso, marca
+            // chargeQueued de vez (não desmarca se soltar depois — mesmo
+            // idioma do comboQueued, a intenção já foi "gasta" e só espera a
+            // janela/Exit Time do Animator consumir). Soltar ANTES do piso
+            // encerra o rastreio sem marcar nada — foi só um toque normal.
+            if (chargingAttack)
+            {
+                if (!attackAction.IsPressed())
+                {
+                    chargingAttack = false;
+                }
+                else
+                {
+                    chargeElapsed += Time.deltaTime;
+                    if (chargeElapsed >= chargeAttackHoldThreshold)
+                    {
+                        chargeQueued = true;
+                        chargingAttack = false;
+                    }
+                }
+            }
+
+            // Fora do if acima de propósito, igual ComboQueued/AttackQueued
+            // logo abaixo: precisa continuar refletindo chargeQueued em todo
+            // frame, inclusive depois que chargingAttack já virou false (o
+            // momento em que o piso é cruzado).
+            animator.SetBool(AnimStrings.IsCharging, chargeQueued);
+
+            // Mesmo gate de janela do ComboQueued (ver ComboWindowOpen) —
+            // consumido pela transição Attack1 -> Attack1Charged no Animator,
+            // igual Attack1/2 -> Attack2/3 consomem ComboQueued.
+            animator.SetBool(AnimStrings.ChargeQueued, chargeQueued && ComboWindowOpen());
 
             // O bool só chega no Animator depois que a janela abre — é isso
             // que separa "enfileirado" de "encadeia agora". comboQueued (o
@@ -758,6 +1009,51 @@ namespace Babel.Player
             }
 
             animator.SetBool(AnimStrings.Sprint, sprinting);
+        }
+
+        // Dispara os três triggers de embalo da locomoção — RunStart na
+        // borda "parado -> andando", RunEnd na borda "andando -> parado",
+        // SprintEnd na borda "sprintando -> não sprintando mais" (chão só).
+        //
+        // Só TRIGGERS: quem decide quando esses estados soltam o controle de
+        // volta é o Animator, via transições sem Exit Time saindo deles pros
+        // mesmos alvos que Locomotion/ArmedLocomotion já aceitam hoje
+        // (Attack1, JumpStart, Dodge, e a própria Locomotion/Sprint) — é
+        // isso que implementa o Total Input Cancel: qualquer input real
+        // (mover de novo, atacar, pular, rolar) já tem um trigger disparando
+        // em paralelo TODO frame (ver HandleAttack/HandleJump/HandleDodge,
+        // nenhum deles checa o nome do estado atual), então basta o
+        // Animator também aceitar esses triggers vindo de RunStart/RunEnd/
+        // SprintEnd — não precisa de bool novo nem de gate aqui. Ver o guia,
+        // seção 2.
+        //
+        // Bloqueado durante ataque/dodge/pulo: esses já têm suas próprias
+        // entradas/saídas de locomoção, RunStart/RunEnd não devem disparar
+        // por cima.
+        private void HandleLocomotionTransitions()
+        {
+            bool moving = moveAction.ReadValue<Vector2>().magnitude > locomotionMoveThreshold;
+            bool blocked = IsAttacking() || IsDodging() || airborne || !controller.isGrounded;
+
+            if (!blocked)
+            {
+                if (moving && !wasMovingGrounded)
+                {
+                    animator.SetTrigger(AnimStrings.RunStart);
+                }
+                else if (!moving && wasMovingGrounded)
+                {
+                    animator.SetTrigger(AnimStrings.RunEnd);
+                }
+
+                if (!sprinting && wasSprintingGrounded)
+                {
+                    animator.SetTrigger(AnimStrings.SprintEnd);
+                }
+            }
+
+            wasMovingGrounded = moving && !blocked;
+            wasSprintingGrounded = sprinting && !blocked;
         }
 
         // O trigger é tudo que sai daqui — o IMPULSO mudou de lugar e agora vem
@@ -895,7 +1191,26 @@ namespace Babel.Player
             if (weaponEquip != null && weaponEquip.IsWielded
                 && strongAttackAction.WasPressedThisFrame())
             {
-                strongComboQueued = true;
+                if (!controller.isGrounded && !IsPlungeFalling())
+                {
+                    // Plunge attack: dispara de QUALQUER estado aéreo (a
+                    // condição de origem mora nas transições do Animator,
+                    // não aqui) — trigger cru e não fila, pelo mesmo motivo
+                    // do Jump normal: é uma ação nova, não um branch de
+                    // combo em andamento.
+                    animator.SetTrigger(AnimStrings.PlungeAttack);
+                }
+                else if (sprinting && controller.isGrounded && !IsAttacking())
+                {
+                    // Ataque pesado a partir do sprint: também trigger cru
+                    // (não é branch do combo de chão, é uma entrada nova a
+                    // partir de ArmedSprint/Sprint).
+                    animator.SetTrigger(AnimStrings.SprintHeavyAttack);
+                }
+                else
+                {
+                    strongComboQueued = true;
+                }
             }
 
             // Mesmo gate de janela do ComboQueued (ver ComboWindowOpen) — o
@@ -1138,6 +1453,77 @@ namespace Babel.Player
 
             bool dodging = UpdateDodgeScale();
 
+            // Plunge attack: mesmo gate de chão que airAttacking usa logo
+            // abaixo, e pelo mesmo motivo (ver o comentário lá) — dá pra
+            // pousar um frame antes do Animator resolver a saída pro
+            // AirHeavyAttack2 de impacto.
+            bool plungeFalling = IsPlungeFalling() && !controller.isGrounded;
+
+            if (plungeFalling && !wasPlungeFalling)
+            {
+                if (enemyLayerIndex >= 0)
+                {
+                    Physics.IgnoreLayerCollision(gameObject.layer, enemyLayerIndex, true);
+                }
+
+                plungeStartImpulse?.GenerateImpulse();
+
+                FindPlungeCarryTarget(out plungeCarriedKnockback);
+                if (plungeCarriedKnockback != null && weaponEquip != null && weaponEquip.WieldSocket != null)
+                {
+                    plungeCarriedKnockback.BeginCarry(weaponEquip.WieldSocket.position);
+                }
+            }
+
+            if (plungeFalling)
+            {
+                if (plungeCarriedKnockback != null && weaponEquip != null && weaponEquip.WieldSocket != null)
+                {
+                    plungeCarriedKnockback.UpdateCarryPosition(weaponEquip.WieldSocket.position);
+                }
+
+                // Carrier box: mobs SECUNDÁRIOS pegos na caixa de impacto
+                // (não o alvo já ancorado acima) descem junto, na mesma
+                // velocidade da queda — rearmado todo frame, ver o
+                // comentário de KnockbackReceiver.ForceDescend.
+                Collider[] caught = Physics.OverlapSphere(
+                    transform.position + Vector3.up * plungeImpactHeight, plungeImpactRadius, plungeImpactMask);
+                foreach (Collider hit in caught)
+                {
+                    KnockbackReceiver caughtKnockback = hit.GetComponentInParent<KnockbackReceiver>();
+                    if (caughtKnockback != null && caughtKnockback != plungeCarriedKnockback)
+                    {
+                        caughtKnockback.ForceDescend(plungeFallSpeed);
+                    }
+                }
+            }
+
+            // Borda de SAÍDA da queda — cobre os dois jeitos de sair dela:
+            // pouso normal (controller.isGrounded vira true antes do
+            // Animator sequer trocar pro AirHeavyAttack2 de impacto) e
+            // cancelamento no meio do ar (um dash aéreo interrompendo o
+            // plunge, ver HandleDodge). Nos dois casos a colisão
+            // jogador-inimigo volta e quem estava pendurado é solto AQUI,
+            // não esperando o Animation Event OnPlungeImpact — aquele evento
+            // só existe pro DANO do impacto (ApplyHit radial); religar
+            // colisão e soltar o carry um pouco antes disso é inofensivo (o
+            // alvo solto continua perto o bastante do player pra entrar no
+            // raio do impacto), e o HandlePlungeImpact vira só um cinto de
+            // segurança redundante (null-safe) pro caso deste bloco não ter
+            // rodado por algum motivo.
+            if (wasPlungeFalling && !plungeFalling && plungeCarriedKnockback != null)
+            {
+                if (enemyLayerIndex >= 0)
+                {
+                    Physics.IgnoreLayerCollision(gameObject.layer, enemyLayerIndex, false);
+                }
+
+                plungeCarriedKnockback.EndCarry();
+                plungeCarriedKnockback = null;
+            }
+
+            wasPlungeFalling = plungeFalling;
+
             // O `&& !controller.isGrounded` não é redundante: dá pra pousar no
             // MEIO de um ataque aéreo (o Animator tem saída por IsJumping pro
             // JumpEnd, mas o golpe pode encostar no chão um frame antes dela
@@ -1212,6 +1598,19 @@ namespace Babel.Player
 
             wasAirAttacking = airAttacking;
 
+            // Sprint Heavy Attack: captura a velocidade de sprint na BORDA
+            // de entrada (lastGroundedSpeed do frame ANTERIOR, antes deste
+            // frame recalcular em cima do root motion do próprio golpe, que
+            // quase não anda) — é o baseline que a curva ForwardMomentum
+            // escala logo abaixo.
+            bool sprintHeavyAttacking = AnimatorStateUtil.EffectiveIsName(animator, 0, AnimStrings.SprintHeavyAttack1);
+            if (sprintHeavyAttacking && !wasSprintHeavyAttacking)
+            {
+                capturedSprintMomentumSpeed = lastGroundedSpeed;
+            }
+
+            wasSprintHeavyAttacking = sprintHeavyAttacking;
+
             if (controller.isGrounded)
             {
                 // Também cobre o Dodge (root motion do clipe "Standing Dodge
@@ -1276,6 +1675,28 @@ namespace Babel.Player
                 // somado antes desta linha.
                 rootMotionPosition += transform.forward
                     * animator.GetFloat(AnimStrings.Lunge) * lungeScale * Time.deltaTime;
+
+                // Sprint Heavy Attack: SOMA (não substitui) a velocidade de
+                // sprint capturada, escalada pela curva ForwardMomentum do
+                // clipe (1 no início -> 0 no fim, autorada por golpe). Root
+                // motion do clipe continua respondendo pela rotação/passo —
+                // este termo só preenche o deslocamento pra frente que o
+                // golpe sozinho não teria, exatamente como o Lunge faz para
+                // os ataques parados.
+                if (sprintHeavyAttacking)
+                {
+                    rootMotionPosition += transform.forward * capturedSprintMomentumSpeed
+                        * animator.GetFloat(AnimStrings.ForwardMomentum) * Time.deltaTime;
+                }
+            }
+            else if (plungeFalling)
+            {
+                // Plunge: puramente vertical. O alvo ancorado já segue o
+                // socket da espada (ver acima); o player não persegue nada
+                // no XZ, a queda é reta pra baixo sobre onde o golpe
+                // começou.
+                rootMotionPosition = Vector3.zero;
+                lastGroundedSpeed = 0f;
             }
             else if (airDashing)
             {
@@ -1332,7 +1753,15 @@ namespace Babel.Player
                 health.IsInvulnerable = IsDodgeInvulnerable;
             }
 
-            if (controller.isGrounded && verticalVelocity < 0f)
+            if (plungeFalling)
+            {
+                // "Desativar gravidade padrão e aplicar velocidade vertical
+                // constante": não integra nada, só CRAVA o valor todo
+                // frame — é isso que faz a queda ser instantaneamente rápida
+                // e constante em vez de acelerar como uma queda livre normal.
+                verticalVelocity = -plungeFallSpeed;
+            }
+            else if (controller.isGrounded && verticalVelocity < 0f)
             {
                 verticalVelocity = -0.5f;
             }

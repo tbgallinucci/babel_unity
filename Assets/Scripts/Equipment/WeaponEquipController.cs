@@ -115,6 +115,11 @@ namespace Babel.Equipment
         public WeaponState CurrentState => currentState;
         public bool IsWielded => currentState == WeaponState.Wielded;
         public bool IsTransitioning => currentState == WeaponState.Drawing || currentState == WeaponState.Sheathing;
+        // Exposto pro PlungeAttack (PlayerController) ancorar o inimigo
+        // carregado na posição da arma durante a queda — não precisa saber
+        // se ela está de fato desembainhada, quem chama já sabe (o plunge só
+        // dispara com IsWielded).
+        public Transform WieldSocket => wieldSocket;
 
         private void Awake()
         {

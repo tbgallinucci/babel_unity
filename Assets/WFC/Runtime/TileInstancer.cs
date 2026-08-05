@@ -27,8 +27,18 @@ namespace WFC.Runtime
             Transform existing = parent.Find(GeneratedRootName);
             while (existing != null)
             {
+                // Object.Destroy() em Play Mode só efetiva no FIM do frame — o objeto
+                // continua no lugar até lá. Sem desanexar antes, parent.Find() acha o
+                // MESMO objeto de novo na próxima iteração e o laço nunca sai: é
+                // exatamente o travamento ao trocar de andar (a 2ª geração encontra o
+                // andar da 1ª ainda por destruir e trava aqui para sempre).
+                // Desanexar tira o objeto de baixo de `parent` na hora, então o Find()
+                // seguinte não o encontra mais — Destroy() cuida da limpeza depois.
+                existing.SetParent(null);
+
                 if (Application.isPlaying) Object.Destroy(existing.gameObject);
                 else Object.DestroyImmediate(existing.gameObject);
+
                 existing = parent.Find(GeneratedRootName);
             }
         }

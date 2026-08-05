@@ -70,6 +70,22 @@ namespace Babel.Combat
         // ficaria preso no ar pra sempre.
         private bool apexHangUsed;
 
+        // -- Plunge Attack: carry e forced descent ---------------------------
+        // "Carregado" no socket da arma durante a queda do plunge attack —
+        // ganha de TUDO (launch/hang/knockback normal) enquanto ativo. Início
+        // e fim são comandados de fora (PlayerController), não por timer:
+        // dura exatamente o tempo que o plunge durar.
+        private bool anchored;
+        private Vector3 anchorPosition;
+        // "Empurrado pra baixo pela carrier box do plunge" — mobs
+        // SECUNDÁRIOS (não o alvo ancorado, que já segue o socket). Precisa
+        // ser rearmado TODO frame por quem chama (mesmo idioma do campo
+        // `remaining`): se PlayerController parar de chamar (o mob saiu da
+        // caixa, ou o plunge acabou), o efeito desliga sozinho no próximo
+        // FixedUpdate em vez de precisar de um Stop explícito.
+        private bool forcedDescentActive;
+        private float forcedDescentSpeed;
+
         // Pra quem mais tenta escrever transform.position no mesmo objeto
         // (ex.: EnemyBase dirigindo um NavMeshAgent) saber quando ceder o
         // controle em vez de brigar por ele. Fica genérico de propósito —
@@ -82,7 +98,11 @@ namespace Babel.Combat
         // quem precisa saber disso (a IA, pra se desligar) só se importa com o
         // caso aéreo — durante um push de chão o inimigo pode continuar
         // pensando normalmente.
-        public bool IsAirborne => launching;
+        //
+        // `anchored` entra na mesma condição: um alvo carregado no plunge
+        // está literalmente pendurado na espada, a IA precisa ficar
+        // desligada exatamente pelo mesmo motivo que durante um launch.
+        public bool IsAirborne => launching || anchored;
 
         private void Awake()
         {
@@ -204,8 +224,67 @@ namespace Babel.Combat
             remaining += hangTime;
         }
 
+        // Início do carry — chamado uma vez, na borda de entrada do plunge.
+        // Zera qualquer launch/knockback em andamento: o alvo pode estar no
+        // meio de um juggle quando o plunge o pega, e o carry manda mais que
+        // isso (mesma prioridade que ApplyLaunch já dá a si mesmo sobre o
+        // ApplyKnockback normal).
+        public void BeginCarry(Vector3 initialPosition)
+        {
+            anchored = true;
+            anchorPosition = initialPosition;
+            launching = false;
+            remaining = 0f;
+            hangRemaining = 0f;
+            forcedDescentActive = false;
+        }
+
+        // Chamado TODO frame enquanto o carry durar — quem manda na posição é
+        // PlayerController (segue o WieldSocket da arma).
+        public void UpdateCarryPosition(Vector3 worldPosition)
+        {
+            anchorPosition = worldPosition;
+        }
+
+        // Solta o alvo. Não aplica velocidade nenhuma na soltura — quem quiser
+        // um "arremesso" ao soltar chama ApplyKnockback/ApplyLaunch logo em
+        // seguida, de fora; este método só para de mover.
+        public void EndCarry()
+        {
+            anchored = false;
+        }
+
+        // Ver o comentário do campo `forcedDescentActive`: precisa ser
+        // chamado todo frame que o alvo estiver dentro da carrier box do
+        // plunge attack. `anchored`/`launching` ganham desse efeito — um mob
+        // já carregado ou já voando não deveria também ser arrastado pra
+        // baixo por uma segunda regra ao mesmo tempo.
+        public void ForceDescend(float speed)
+        {
+            if (anchored || launching)
+            {
+                return;
+            }
+
+            forcedDescentActive = true;
+            forcedDescentSpeed = speed;
+        }
+
         private void FixedUpdate()
         {
+            if (anchored)
+            {
+                rb.MovePosition(anchorPosition);
+                return;
+            }
+
+            if (forcedDescentActive)
+            {
+                rb.MovePosition(rb.position + Vector3.down * forcedDescentSpeed * Time.fixedDeltaTime);
+                forcedDescentActive = false;
+                return;
+            }
+
             if (remaining <= 0f)
             {
                 return;
