@@ -40,6 +40,11 @@ namespace WFC.Runtime
         [Tooltip("Agent Type ID da NavMesh. 0 = Humanoid (o padrão).")]
         public int agentTypeId;
 
+        [Header("Camada")]
+        [Tooltip("Nome da Layer do Unity aplicada em cascata em todo o casco gerado (raiz + cada peça + " +
+                 "filhos), independente da layer que o prefab de origem tiver no asset. Vazio = não mexe.")]
+        public string generatedLayerName = "Environment";
+
         [Header("Validação")]
         [Tooltip("Confere entrada→escada antes de instanciar. Barato; deixe ligado.")]
         public bool validateConnectivity = true;
@@ -140,7 +145,16 @@ namespace WFC.Runtime
             yield return null; // devolve o frame antes da parte pesada
 
             // ---- 2. Preenchimento (WFC) -------------------------------------
-            var filler = new WFCFiller(floorSpec.tileSet, floorSpec, transform);
+            int layer = -1;
+            if (!string.IsNullOrEmpty(generatedLayerName))
+            {
+                layer = LayerMask.NameToLayer(generatedLayerName);
+                if (layer < 0)
+                    Debug.LogWarning($"[WFCFloorGenerator] Layer '{generatedLayerName}' não existe " +
+                                     "(Project Settings ▸ Tags and Layers). Peças saem com a layer do prefab.", this);
+            }
+
+            var filler = new WFCFiller(floorSpec.tileSet, floorSpec, transform, layer);
             FloorFillResult fill = filler.Fill(floor.Grid, rng);
 
             foreach (string w in filler.Warnings) Debug.LogWarning($"[WFCFloorGenerator] {w}", this);

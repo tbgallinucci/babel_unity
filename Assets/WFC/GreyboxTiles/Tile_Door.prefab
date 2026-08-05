@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6705861699729573995}
   - component: {fileID: 8941124529202979889}
   - component: {fileID: 4822373417378357044}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Floor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -124,7 +124,7 @@ GameObject:
   - component: {fileID: 3066641104968407540}
   - component: {fileID: 3816505481400961310}
   - component: {fileID: 7188214886350668207}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wall_N_R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -236,7 +236,7 @@ GameObject:
   - component: {fileID: 5239066169733789842}
   - component: {fileID: 678022000538747212}
   - component: {fileID: 2553292115490130545}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Lintel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -383,7 +383,7 @@ GameObject:
   - component: {fileID: 2963390384569600775}
   - component: {fileID: 1756455761845252266}
   - component: {fileID: 4426509827319212005}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wall_N_L
   m_TagString: Untagged
   m_Icon: {fileID: 0}

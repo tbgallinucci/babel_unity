@@ -47,14 +47,19 @@ namespace WFC.Runtime
         /// Instancia uma peça por célula e coleta os SpawnAnchors encontrados nos prefabs.
         /// Devolve a raiz criada.
         /// </summary>
+        /// <param name="layer">
+        /// Layer aplicada em cascata na raiz e em cada peça instanciada (inclusive filhos).
+        /// -1 = não mexe, mantém a layer que vier do prefab (comportamento antigo).
+        /// </param>
         public static Transform Build(Transform parent, TileSet tileSet, AnnotatedGrid grid,
-                                      int[] variants, List<SpawnAnchor> anchorsOut)
+                                      int[] variants, List<SpawnAnchor> anchorsOut, int layer = -1)
         {
             ClearGenerated(parent);
 
             var root = new GameObject(GeneratedRootName);
             root.transform.SetParent(parent, false);
             root.transform.localPosition = Vector3.zero;
+            if (layer >= 0) root.layer = layer;
 
             var buffer = new List<SpawnAnchor>();
 
@@ -71,6 +76,12 @@ namespace WFC.Runtime
                 instance.transform.localRotation = tileSet.GetRotationQuaternion(variant);
                 instance.name = $"{tileSet.GetVariantName(variant)} [{cell}]";
 
+                // Todo o casco gerado precisa sair na MESMA layer (física/renderização
+                // consistentes andar afora), independente da layer que o prefab de
+                // origem tiver no asset — daí forçar em cascata em vez de confiar
+                // no valor herdado.
+                if (layer >= 0) SetLayerRecursively(instance, layer);
+
                 if (anchorsOut == null) continue;
 
                 // O plugin apenas COLETA os anchors; quem decide o que nasce neles é o
@@ -85,6 +96,14 @@ namespace WFC.Runtime
             }
 
             return root.transform;
+        }
+
+        private static void SetLayerRecursively(GameObject go, int layer)
+        {
+            go.layer = layer;
+            Transform t = go.transform;
+            for (int i = 0; i < t.childCount; i++)
+                SetLayerRecursively(t.GetChild(i).gameObject, layer);
         }
 
         private static GameObject Instantiate(GameObject prefab, Transform parent)

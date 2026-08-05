@@ -34,6 +34,7 @@ namespace WFC.Runtime
         private readonly TileSet _tileSet;
         private readonly FloorSpec _spec;
         private readonly Transform _parent;
+        private readonly int _layer;
 
         /// <summary>Desligue para só rodar o solver (útil para medir ou para ver só os gizmos).</summary>
         public bool InstantiateGeometry { get; set; } = true;
@@ -43,11 +44,13 @@ namespace WFC.Runtime
         /// <summary>Avisos do último Fill — regras de papel ignoradas, etc.</summary>
         public List<string> Warnings { get; } = new List<string>();
 
-        public WFCFiller(TileSet tileSet, FloorSpec spec, Transform parent)
+        /// <param name="layer">Layer aplicada em cascata em todo o casco gerado. -1 = mantém a do prefab.</param>
+        public WFCFiller(TileSet tileSet, FloorSpec spec, Transform parent, int layer = -1)
         {
             _tileSet = tileSet;
             _spec = spec;
             _parent = parent;
+            _layer = layer;
         }
 
         public FloorFillResult Fill(AnnotatedGrid grid, IRandom rng)
@@ -162,7 +165,7 @@ namespace WFC.Runtime
             if (InstantiateGeometry && _parent != null)
             {
                 var sw2 = Stopwatch.StartNew();
-                result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors);
+                result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors, _layer);
                 sw2.Stop();
                 result.InstantiateMilliseconds = sw2.Elapsed.TotalMilliseconds;
             }

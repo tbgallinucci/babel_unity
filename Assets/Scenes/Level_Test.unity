@@ -1097,7 +1097,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8846183508424771107, guid: 15a6f173dd9579b46bc2630a6839ad66, type: 3}
   m_PrefabInstance: {fileID: 5657730529054849520}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 5657730529054849521}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
@@ -1108,7 +1108,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3375439459322220537, guid: 15a6f173dd9579b46bc2630a6839ad66, type: 3}
   m_PrefabInstance: {fileID: 5657730529054849520}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 5657730529054849521}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b5d7c088409d9a40b7b09aa707777f8, type: 3}
@@ -1126,7 +1126,7 @@ GameObject:
   - component: {fileID: 1123359630}
   - component: {fileID: 1123359629}
   - component: {fileID: 1123359628}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Level_Gen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1210,6 +1210,7 @@ MonoBehaviour:
   floorSpec: {fileID: 11400000, guid: c7221ea856ee6e2418b119275a9ddf3b, type: 2}
   bakeNavMesh: 1
   agentTypeId: 0
+  generatedLayerName: Environment
   validateConnectivity: 1
   connectivityRetries: 4
   logTimings: 1
@@ -1465,7 +1466,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1178983956306169029, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
   m_PrefabInstance: {fileID: 7221281572341941684}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 7221281572341941685}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b5d7c088409d9a40b7b09aa707777f8, type: 3}
@@ -2108,8 +2109,55 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 42797974557111104, guid: 15a6f173dd9579b46bc2630a6839ad66, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5657730529054849522}
   m_SourcePrefab: {fileID: 100100000, guid: 15a6f173dd9579b46bc2630a6839ad66, type: 3}
+--- !u!1 &5657730529054849521 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 42797974557111104, guid: 15a6f173dd9579b46bc2630a6839ad66, type: 3}
+  m_PrefabInstance: {fileID: 5657730529054849520}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5657730529054849522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5657730529054849521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbe43d662878a7c43bcd44d43c9e2094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineDeoccluder
+  CollideAgainst:
+    serializedVersion: 2
+    m_Bits: 256
+  IgnoreTag: 
+  TransparentLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  MinimumDistanceFromTarget: 0.3
+  AvoidObstacles:
+    Enabled: 1
+    DistanceLimit: 0
+    MinimumOcclusionTime: 0
+    CameraRadius: 0.4
+    UseFollowTarget:
+      Enabled: 0
+      YOffset: 0
+    Strategy: 0
+    MaximumEffort: 4
+    SmoothingTime: 0
+    Damping: 0.2
+    DampingWhenOccluded: 0.2
+  ShotQualityEvaluation:
+    Enabled: 0
+    OptimalDistance: 10
+    NearLimit: 5
+    FarLimit: 30
+    MaxQualityBoost: 0.2
 --- !u!1001 &7221281572341941684
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2118,6 +2166,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1230916660271825544, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
+      propertyPath: TargetOffset.y
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -2132,19 +2184,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9805807
+      value: 0.9925076
       objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.19611613
+      value: 0.12218325
       objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.000000011703068
+      value: -0.000000007103033
       objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.000000002340614
+      value: 8.7442303e-10
       objectReference: {fileID: 0}
     - target: {fileID: 4131219769055646022, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2173,8 +2225,55 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7140947968870682158, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7221281572341941686}
   m_SourcePrefab: {fileID: 100100000, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
+--- !u!1 &7221281572341941685 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7140947968870682158, guid: a194ddd3263b03b42a22504b22d2442b, type: 3}
+  m_PrefabInstance: {fileID: 7221281572341941684}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7221281572341941686
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7221281572341941685}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbe43d662878a7c43bcd44d43c9e2094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineDeoccluder
+  CollideAgainst:
+    serializedVersion: 2
+    m_Bits: 129
+  IgnoreTag: 
+  TransparentLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  MinimumDistanceFromTarget: 0.3
+  AvoidObstacles:
+    Enabled: 1
+    DistanceLimit: 0
+    MinimumOcclusionTime: 0
+    CameraRadius: 0.4
+    UseFollowTarget:
+      Enabled: 0
+      YOffset: 0
+    Strategy: 0
+    MaximumEffort: 4
+    SmoothingTime: 0
+    Damping: 0.2
+    DampingWhenOccluded: 0.2
+  ShotQualityEvaluation:
+    Enabled: 0
+    OptimalDistance: 10
+    NearLimit: 5
+    FarLimit: 30
+    MaxQualityBoost: 0.2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
