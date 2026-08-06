@@ -267,7 +267,7 @@ MonoBehaviour:
   everyNWalls: 3
   startOffset: 0
   minLitAnchorsPerRoom: 2
-  unlitTorchPrefab: {fileID: 8583780524957933453, guid: 2bfe80fc92f3eeb4786b6da142fb2fab, type: 3}
+  unlitTorchPrefab: {fileID: 6018316857538242690, guid: e69bd27ed6161dc469b0ff998fa6b6a3, type: 3}
   unlitTorchDensity: 0.1
   oneAxisPerRoom: 1
   logSummary: 1
