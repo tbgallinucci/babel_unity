@@ -267,6 +267,9 @@ MonoBehaviour:
   everyNWalls: 3
   startOffset: 0
   minLitAnchorsPerRoom: 2
+  perWallLightBounds: 1
+  minLitPerWall: 1
+  maxLitPerWall: 2
   unlitTorchPrefab: {fileID: 6018316857538242690, guid: e69bd27ed6161dc469b0ff998fa6b6a3, type: 3}
   unlitTorchDensity: 0.1
   oneAxisPerRoom: 1
@@ -285,6 +288,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.PropRoomPopulator
   archetypes:
   - {fileID: 11400000, guid: 5dc40a5d98c25054bb5b999ce5ac4c9b, type: 2}
+  - {fileID: 11400000, guid: 9be559b51aec0e2408379ea5d975dca3, type: 2}
   safeRadiusFromEntrance: 6
   logSummary: 0
 --- !u!114 &1123359633
@@ -356,11 +360,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8831de5e47f078a48b561ee356c91159, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Babel.Floor.FloorLightField
-  maxStepsPerSeed: 12
+  maxStepsPerSeed: 30
   rangeMultiplier: 0.5
   intensityMultiplier: 0.003
   colorSaturation: 0.5
-  textureFilterMode: 2
+  textureFilterMode: 1
   logSummary: 1
 --- !u!1001 &302583724468412118
 PrefabInstance:
@@ -812,6 +816,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 977356162093294440, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 977356162093294440, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 16
+      objectReference: {fileID: 0}
     - target: {fileID: 1964865988055678496, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}
       propertyPath: m_Name
       value: Canvas
@@ -894,6 +906,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5355075390735614809, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5720630905715371672, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}
+      propertyPath: m_PreserveAspect
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6039623470520238054, guid: a2c240719c17bf44a97eb3657bcdc526, type: 3}

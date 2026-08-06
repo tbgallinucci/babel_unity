@@ -10,7 +10,9 @@
 //  Duas das três regras pedidas vêm de GRAÇA por causa de qual peça ganha
 //  anchor:
 //
-//    • "nunca em canto/quina"        → Tile_Corner não tem anchor nenhum.
+//    • "nunca em canto/quina"        → Tile_Corner não tem anchor de LUZ (tem um de Chest,
+//                                       de outro kind — GreyboxTileGenerator.CornerChestAnchor —
+//                                       que este script ignora por filtrar só kind == Light).
 //    • "só parede única ou paralela" → só Tile_Wall (1 parede) e
 //                                       Tile_Corridor/Tile_Door_Corridor
 //                                       (2 paredes paralelas) têm anchor;
@@ -80,8 +82,26 @@ namespace Babel.Floor
         [Tooltip("Toda SALA (corredor não conta — não tem 'a sala', é a malha inteira) precisa " +
                  "acabar com pelo menos este tanto de anchor aceso. Sala que zerou por causa da " +
                  "combinação 'a cada N' + eixo por sala ganha anchor promovido de volta, puxado do " +
-                 "eixo que tinha sido descartado quando existir. 0 = desliga a garantia.")]
+                 "eixo que tinha sido descartado quando existir. 0 = desliga a garantia. " +
+                 "IGNORADO quando 'Per Wall Light Bounds' está ligado — aquela regra é mais " +
+                 "específica (por parede, não por sala) e já cobre este caso de sobra.")]
         [Min(0)] [SerializeField] private int minLitAnchorsPerRoom = 1;
+
+        [Tooltip("Garante, por TRECHO RETO de parede de SALA (corredor não conta), entre " +
+                 "'Min Lit Per Wall' e 'Max Lit Per Wall' tochas acesas — não por sala inteira, " +
+                 "por LADO da sala. Ligado, isto ignora o filtro de eixo do oneAxisPerRoom para " +
+                 "as paredes de sala (density roda nos 4 lados, não só no eixo mais comprido) e " +
+                 "substitui minLitAnchorsPerRoom/PromoteUnderlitRooms, que viram redundantes.")]
+        [SerializeField] private bool perWallLightBounds = true;
+
+        [Tooltip("Mínimo de tochas acesas por trecho reto de parede de SALA, quando " +
+                 "'Per Wall Light Bounds' está ligado.")]
+        [Min(0)] [SerializeField] private int minLitPerWall = 1;
+
+        [Tooltip("Máximo de tochas acesas por trecho reto de parede de SALA, quando " +
+                 "'Per Wall Light Bounds' está ligado — corta o excesso que a regra 'a cada N' " +
+                 "acender num trecho comprido (N pequeno + trecho longo passa fácil de 2).")]
+        [Min(1)] [SerializeField] private int maxLitPerWall = 2;
 
         [Tooltip("Opcional. Instanciado (sem acender nada) numa FRAÇÃO dos anchors que a regra " +
                  "'a cada N' NÃO escolheu — mesmo soquete de parede, só que apagado. Puramente " +
@@ -145,7 +165,13 @@ namespace Babel.Floor
             // anchor do eixo que o filtro descartou.
             int beforeAxisFilter = lightAnchors.Count;
             List<SpawnAnchor> candidates = lightAnchors;
-            List<SpawnAnchor> spacingPool = oneAxisPerRoom ? FilterOneAxisPerRoom(candidates, annotated) : candidates;
+
+            // Com perWallLightBounds ligado, a garantia por-parede abaixo já cobre "toda parede
+            // de sala acende pelo menos uma" sozinha — filtrar por eixo aqui só faria a regra
+            // "a cada N" ignorar dois dos quatro lados à toa, pra depois a promoção por-parede
+            // reacender eles de qualquer jeito. Sem o filtro, "a cada N" já roda nos 4 lados.
+            bool applyAxisFilter = oneAxisPerRoom && !perWallLightBounds;
+            List<SpawnAnchor> spacingPool = applyAxisFilter ? FilterOneAxisPerRoom(candidates, annotated) : candidates;
 
             var chosen = new HashSet<SpawnAnchor>();
             foreach (List<SpawnAnchor> run in GroupIntoStraightRuns(spacingPool, grid))
@@ -155,9 +181,11 @@ namespace Babel.Floor
                     chosen.Add(run[i]);
             }
 
-            int promoted = minLitAnchorsPerRoom > 0
-                ? PromoteUnderlitRooms(chosen, candidates, annotated)
-                : 0;
+            int promoted, demoted = 0;
+            if (perWallLightBounds)
+                promoted = EnforceWallLightBounds(chosen, candidates, annotated, grid, out demoted);
+            else
+                promoted = minLitAnchorsPerRoom > 0 ? PromoteUnderlitRooms(chosen, candidates, annotated) : 0;
 
             int litCount = 0, unlitCount = 0;
             foreach (SpawnAnchor anchor in candidates)
@@ -192,10 +220,15 @@ namespace Babel.Floor
             }
 
             if (logSummary)
+            {
+                string boundsInfo = perWallLightBounds
+                    ? $", {demoted} apagada(s) por passar do teto por parede"
+                    : "";
                 Debug.Log($"[BasicLightingPopulator] Andar {floor.FloorNumber}: {litCount} luz(es) " +
-                          $"({promoted} promovida(s) por sala sem luz), {unlitCount} apagada(s) " +
-                          $"decorativa(s), de {candidates.Count} anchor(s) candidato(s) " +
+                          $"({promoted} promovida(s) por parede/sala sem luz{boundsInfo}), {unlitCount} " +
+                          $"apagada(s) decorativa(s), de {candidates.Count} anchor(s) candidato(s) " +
                           $"({beforeAxisFilter} antes da regra de eixo por sala).", this);
+            }
 
             return litCount;
         }
@@ -296,6 +329,60 @@ namespace Babel.Floor
                     chosen.Add(next);
                     lit++;
                     promoted++;
+                }
+            }
+
+            return promoted;
+        }
+
+        /// <summary>
+        /// Garante entre <see cref="minLitPerWall"/> e <see cref="maxLitPerWall"/> anchors acesos
+        /// por TRECHO RETO de parede de sala (corredor fica de fora — mesmo critério de
+        /// <see cref="PromoteUnderlitRooms"/>). Reagrupa <paramref name="allCandidates"/> em runs
+        /// do zero (não reaproveita os runs da passada "a cada N" porque aqueles vieram do
+        /// spacingPool, que já pode ter sido filtrado por eixo) — é assim que uma parede que o
+        /// oneAxisPerRoom teria apagado ainda aparece aqui como trecho próprio, com seu mínimo
+        /// garantido.
+        ///
+        /// Promoção puxa o(s) anchor(s) de MENOR cellIndex do trecho; corte de excesso remove
+        /// o(s) de MAIOR cellIndex entre os já acesos — as duas escolhas são determinísticas
+        /// (mesma seed, mesmas luzes sempre), sem sortear nada.
+        /// </summary>
+        private int EnforceWallLightBounds(HashSet<SpawnAnchor> chosen, List<SpawnAnchor> allCandidates,
+                                            AnnotatedGrid annotated, Grid3D grid, out int demoted)
+        {
+            int promoted = 0;
+            demoted = 0;
+
+            List<SpawnAnchor> roomCandidates = allCandidates
+                .Where(a => annotated.GetRegion(a.cellIndex) >= AnnotatedGrid.FirstRoomRegion)
+                .ToList();
+
+            foreach (List<SpawnAnchor> run in GroupIntoStraightRuns(roomCandidates, grid))
+            {
+                List<SpawnAnchor> lit = run.Where(a => chosen.Contains(a))
+                                            .OrderBy(a => a.cellIndex)
+                                            .ToList();
+
+                if (lit.Count > maxLitPerWall)
+                {
+                    for (int i = maxLitPerWall; i < lit.Count; i++)
+                    {
+                        chosen.Remove(lit[i]);
+                        demoted++;
+                    }
+                }
+                else if (lit.Count < minLitPerWall)
+                {
+                    List<SpawnAnchor> unlit = run.Where(a => !chosen.Contains(a))
+                                                  .OrderBy(a => a.cellIndex)
+                                                  .ToList();
+                    int need = Mathf.Min(minLitPerWall - lit.Count, unlit.Count); // trecho curto demais: melhor esforço, não é erro
+                    for (int i = 0; i < need; i++)
+                    {
+                        chosen.Add(unlit[i]);
+                        promoted++;
+                    }
                 }
             }
 

@@ -19,6 +19,14 @@ namespace WFC.Runtime
     {
         public const string GeneratedRootName = "__GeneratedFloor";
 
+        // Nome do filho de piso dentro de cada prefab de peça — mesma convenção que
+        // GreyboxTileGenerator.Floor() usa ("Floor" sem sufixo de célula; o sufixo
+        // "[cell]" só entra no nome da RAIZ instanciada, não no filho). Arte de produção
+        // que substituir o greybox precisa manter esse nome pro CounterRotateFloor
+        // continuar achando o piso — é o mesmo tipo de convenção de pivô/nome que o
+        // prefab de tocha já respeita (ver Incluindo e Editando Prefabs de Luz de Parede.md).
+        private const string FloorChildName = "Floor";
+
         /// <summary>Remove qualquer andar gerado anteriormente sob este transform.</summary>
         public static void ClearGenerated(Transform parent)
         {
@@ -80,8 +88,11 @@ namespace WFC.Runtime
 
                 GameObject instance = Instantiate(prefab, root.transform);
                 instance.transform.localPosition = grid.CellToWorld(cell) - parent.position;
-                instance.transform.localRotation = tileSet.GetRotationQuaternion(variant);
+                Quaternion rotation = tileSet.GetRotationQuaternion(variant);
+                instance.transform.localRotation = rotation;
                 instance.name = $"{tileSet.GetVariantName(variant)} [{cell}]";
+
+                CounterRotateFloor(instance.transform, rotation);
 
                 // Todo o casco gerado precisa sair na MESMA layer (física/renderização
                 // consistentes andar afora), independente da layer que o prefab de
@@ -105,6 +116,28 @@ namespace WFC.Runtime
             }
 
             return root.transform;
+        }
+
+        /// <summary>
+        /// Cancela a rotação da PEÇA só no filho de piso, mantendo a orientação dele fixa no
+        /// mundo (identidade) não importa como o WFC girou a peça pra encaixar as paredes.
+        ///
+        /// Por que isto é seguro: o contorno do piso é um quadrado centrado na célula — girar
+        /// 90/180/270 não muda footprint nem cria buraco/sobreposição com a peça vizinha,
+        /// então contra-rotacionar só ele não quebra encaixe nenhum.
+        ///
+        /// Por que isto existe: sem isto, a MESMA textura de piso aparece virada de um jeito
+        /// diferente em cada rotação de peça — e se a textura tiver qualquer sombra/luz assada
+        /// nela (comum em material extraído de .blend/FBX), cada orientação lê como um bloco
+        /// de brilho diferente do vizinho, um mosaico visível que não tem nada a ver com luz
+        /// em tempo real (foi confirmado: zerar o FloorLightField não muda nada nele).
+        /// </summary>
+        private static void CounterRotateFloor(Transform piece, Quaternion pieceRotation)
+        {
+            Transform floor = piece.Find(FloorChildName);
+            if (floor == null) return; // peça sem filho "Floor" (ex.: Wildcard_Air) — nada a fazer
+
+            floor.localRotation = Quaternion.Inverse(pieceRotation);
         }
 
         private static void SetLayerRecursively(GameObject go, int layer)

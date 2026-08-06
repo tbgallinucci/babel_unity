@@ -35,6 +35,13 @@ namespace Babel.Floor
             [Tooltip("Peso relativo no sorteio, entre os props deste arquétipo.")]
             [Min(0.01f)] public float weight = 1f;
 
+            [Tooltip("Máximo de instâncias DESTA entrada por sala. 0 = sem limite (padrão, " +
+                     "comportamento de sempre). Ex.: um baú com peso alto não vai mais lotar " +
+                     "a sala inteira de baú — depois de atingir o teto, o sorteio simplesmente " +
+                     "para de considerar esta entrada (as outras continuam concorrendo " +
+                     "normalmente pelas vagas de 'propCount' que sobrarem).")]
+            [Min(0)] public int maxCount = 0;
+
             [Tooltip("Desmarcado (padrão): nasce numa célula de piso aberto qualquer da sala, igual o " +
                      "EnemyPopulator já faz — bom para prop solto (baú, estátua no meio da sala).\n" +
                      "Marcado: só nasce em cima de um SpawnAnchor do 'Anchor Kind' escolhido, plantado " +

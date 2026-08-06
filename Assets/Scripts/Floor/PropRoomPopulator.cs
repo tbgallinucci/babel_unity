@@ -110,6 +110,7 @@ namespace Babel.Floor
             int roomsPopulated = 0, roomsSkippedRole = 0, roomsWithoutArchetype = 0;
             var openCandidates = new List<int>();
             var anchorCandidates = new List<SpawnAnchor>();
+            var countByEntry = new Dictionary<RoomArchetype.PropEntry, int>();
 
             foreach (SkeletonGenerator.Room room in floor.Rooms)
             {
@@ -138,10 +139,14 @@ namespace Babel.Floor
                 int max = Mathf.Max(archetype.propCount.x, archetype.propCount.y);
                 int wanted = min + rng.NextInt(max - min + 1);
 
+                // Por SALA, não por andar: cada sala sorteia seu elenco do zero, então o teto
+                // por entrada (RoomArchetype.PropEntry.maxCount) também reinicia por sala.
+                countByEntry.Clear();
+
                 for (int i = 0; i < wanted; i++)
                 {
-                    RoomArchetype.PropEntry entry = PickPropEntry(archetype, rng);
-                    if (entry?.prefab == null) continue;
+                    RoomArchetype.PropEntry entry = PickPropEntry(archetype, rng, countByEntry);
+                    if (entry?.prefab == null) continue; // inclui "todas as entradas bateram o teto"
 
                     Vector3 pos;
                     Quaternion rot;
@@ -167,6 +172,11 @@ namespace Babel.Floor
                     GameObject instance = Instantiate(entry.prefab, pos, rot, parent);
                     instance.name = $"{entry.prefab.name} ({archetype.displayName})";
                     spawned.Add(instance);
+
+                    // Conta a INSTÂNCIA de verdade, não a escolha — se o anchor faltou e a
+                    // entrada nem chegou a nascer (continue acima), não deveria consumir o teto.
+                    countByEntry.TryGetValue(entry, out int n);
+                    countByEntry[entry] = n + 1;
                 }
 
                 roomsPopulated++;
@@ -207,24 +217,34 @@ namespace Babel.Floor
             return archetypes[archetypes.Count - 1];
         }
 
-        private static RoomArchetype.PropEntry PickPropEntry(RoomArchetype archetype, IRandom rng)
+        /// <summary>
+        /// Sorteio por peso, igual sempre — só que entradas que já bateram
+        /// <see cref="RoomArchetype.PropEntry.maxCount"/> nesta sala saem do pool antes de somar
+        /// os pesos, como se não existissem. Devolve null quando não sobra nenhuma (todas
+        /// zeradas ou todas no teto) — o chamador já trata null como "esta vaga não nasce".
+        /// </summary>
+        private static RoomArchetype.PropEntry PickPropEntry(RoomArchetype archetype, IRandom rng,
+                                                               Dictionary<RoomArchetype.PropEntry, int> countByEntry)
         {
             float total = 0f;
             foreach (RoomArchetype.PropEntry e in archetype.props)
-                if (e?.prefab != null) total += e.weight;
+                if (e?.prefab != null && !AtCap(e, countByEntry)) total += e.weight;
 
             if (total <= 0f) return null;
 
             double roll = rng.NextDouble() * total;
             foreach (RoomArchetype.PropEntry e in archetype.props)
             {
-                if (e?.prefab == null) continue;
+                if (e?.prefab == null || AtCap(e, countByEntry)) continue;
                 roll -= e.weight;
                 if (roll <= 0.0) return e;
             }
 
             return null;
         }
+
+        private static bool AtCap(RoomArchetype.PropEntry entry, Dictionary<RoomArchetype.PropEntry, int> countByEntry)
+            => entry.maxCount > 0 && countByEntry.TryGetValue(entry, out int n) && n >= entry.maxCount;
 
         private static int FindAnchorIndex(List<SpawnAnchor> candidates, SpawnAnchorKind kind, IRandom rng)
         {

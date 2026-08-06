@@ -37,6 +37,7 @@ public class GreyboxTileGenerator : EditorWindow
     float doorHeight     = 3.3f;  // altura do vão, em METROS — independente de Wall Height
     float wallLightOffset = 1.0f; // distância do anchor de luz até o centro da parede (ver WallLight)
     float wallLightHeightRatio = 0.5f; // altura do anchor de luz, fração de Wall Height
+    float chestAnchorInset = 1.0f; // distância do anchor de baú até a quina, na diagonal (ver CornerChestAnchor)
     string outputFolder  = "Assets/WFC/GreyboxTiles";
 
     Material matFloor, matWall, matAccent;
@@ -72,6 +73,13 @@ public class GreyboxTileGenerator : EditorWindow
         wallLightHeightRatio = EditorGUILayout.Slider(
             new GUIContent("Wall Light Height", "Altura do anchor, como fração de Wall Height (0 = piso, 1 = teto)."),
             wallLightHeightRatio, 0f, 1f);
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Anchor de baú de canto", EditorStyles.boldLabel);
+        chestAnchorInset = EditorGUILayout.FloatField(
+            new GUIContent("Chest Anchor Inset", "Distância do anchor até a quina da sala, na diagonal " +
+                            "(afastando das duas paredes ao mesmo tempo), em metros."),
+            chestAnchorInset);
 
         outputFolder   = EditorGUILayout.TextField("Output Folder", outputFolder);
 
@@ -144,6 +152,26 @@ public class GreyboxTileGenerator : EditorWindow
         return go;
     }
 
+    // Marca "cabe baú aqui" — só nasce em Tile_Corner, de propósito: é a peça que só existe
+    // exatamente na quina de uma sala. `cornerXZ` é o ponto onde as duas paredes se encontram
+    // (face interna); `inward` é a diagonal que afasta o anchor das DUAS paredes ao mesmo
+    // tempo, pra dentro da sala. Mesmo idioma do WallLight, só que a peça tem só uma quina —
+    // uma chamada por Tile_Corner basta, o WFC gira a peça inteira (anchor incluso) quando
+    // precisa da quina oposta.
+    GameObject CornerChestAnchor(Transform parent, string name, Vector3 cornerXZ, Vector3 inward)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        Vector3 dir = inward.normalized;
+        go.transform.localPosition = new Vector3(cornerXZ.x, 0f, cornerXZ.z) + dir * chestAnchorInset;
+        go.transform.localRotation = Quaternion.LookRotation(dir, Vector3.up);
+
+        var anchor = go.AddComponent<SpawnAnchor>();
+        anchor.kind = SpawnAnchorKind.Chest;
+        anchor.clearanceRadius = 0.8f;
+        return go;
+    }
+
     void BuildFloorOpen()
     {
         var root = Root("Tile_Floor_Open");
@@ -166,6 +194,11 @@ public class GreyboxTileGenerator : EditorWindow
         var root = Root("Tile_Corner");
         Floor().transform.SetParent(root.transform, false);
         WallNorth(root.transform); WallWest(root.transform);
+        // Quina Noroeste (paredes Norte + Oeste): o ponto onde as faces internas se
+        // encontram é (-S/2+T, S/2-T); a diagonal que foge das duas paredes ao mesmo
+        // tempo, pra dentro da sala (que fica a Sul/Leste), é (+X, -Z).
+        CornerChestAnchor(root.transform, "Anchor_Chest",
+            new Vector3(-S * 0.5f + T, 0, S * 0.5f - T), new Vector3(1f, 0f, -1f));
         Save(root);
     }
     void BuildCorridor()
