@@ -250,37 +250,13 @@ namespace WFC.Runtime
         }
 
         /// <summary>
-        /// Uma "tampa" única (plane + collider) cobrindo o footprint inteiro do grid, na
-        /// altura do topo das paredes. Não participa do WFC — é geometria estática colada
-        /// por cima depois que o andar já foi resolvido, então nenhum socket/adjacência
-        /// precisa saber de teto. Troque por peças de verdade só se um dia precisar de
-        /// variação visual (viga, claraboia etc.); até lá isto fecha a caixa de graça.
+        /// A "tampa" em si mora em CeilingBuilder — compartilhada com o WFCFloorPreview,
+        /// pra produção e harness de editor nunca mais divergirem nisso.
         /// </summary>
         private void BuildCeiling(GeneratedFloor floor, int layer)
-        {
-            float width = floorSpec.gridSize.x * floorSpec.cellSize + 2f * ceilingOverhang;
-            float depth = floorSpec.gridSize.z * floorSpec.cellSize + 2f * ceilingOverhang;
-            float height = floorSpec.gridSize.y * floorSpec.cellHeight;
-
-            Vector3 center = transform.position + new Vector3(
-                floorSpec.gridSize.x * floorSpec.cellSize * 0.5f,
-                height,
-                floorSpec.gridSize.z * floorSpec.cellSize * 0.5f);
-
-            GameObject ceiling = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            ceiling.name = "Ceiling";
-            ceiling.transform.SetParent(floor.Root, false);
-            ceiling.transform.position = center;
-            // Plane primitivo tem 10x10 unidades e a normal olha para +Y; giramos 180° em X
-            // para a face virada olhar para BAIXO (para dentro do andar).
-            ceiling.transform.rotation = Quaternion.Euler(180f, 0f, 0f);
-            ceiling.transform.localScale = new Vector3(width / 10f, 1f, depth / 10f);
-
-            var renderer = ceiling.GetComponent<MeshRenderer>();
-            if (ceilingMaterial != null) renderer.sharedMaterial = ceilingMaterial;
-
-            if (layer >= 0) ceiling.layer = layer;
-        }
+            => CeilingBuilder.Build(floor.Root, transform.position, floorSpec.gridSize,
+                                    floorSpec.cellSize, floorSpec.cellHeight, ceilingOverhang,
+                                    ceilingMaterial, layer);
 
         /// <summary>Destrói o andar atual e libera a NavMesh dele.</summary>
         public void Clear()

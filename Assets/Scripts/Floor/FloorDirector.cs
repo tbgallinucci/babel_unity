@@ -50,6 +50,12 @@ namespace Babel.Floor
                  "vizinha. Sem ele as tochas sem sombra (a maioria) vazam entre salas.")]
         [SerializeField] private RegionLightMask regionLightMask;
 
+        [Tooltip("Opcional. Propaga a luz de cada tocha pelo grid (flood-fill) e soma como " +
+                 "ambiente de tela cheia — a Etapa 3: contenção fina o bastante pra respeitar " +
+                 "um pilar no meio da sala, coisa que o RegionLightMask (por região inteira) " +
+                 "não cobre.")]
+        [SerializeField] private FloorLightField lightField;
+
         [Header("Run")]
         [Min(1)] [SerializeField] private int startingFloor = 1;
 
@@ -92,6 +98,7 @@ namespace Babel.Floor
             lightBudget = GetComponent<DynamicLightBudget>();
             roomStreamer = GetComponent<RoomStreamer>();
             regionLightMask = GetComponent<RegionLightMask>();
+            lightField = GetComponent<FloorLightField>();
         }
 
         private void Start()
@@ -188,6 +195,14 @@ namespace Babel.Floor
             // própria (ver comentário no BasicLightingPopulator).
             if (lightingPopulator != null)
                 lightingPopulator.Populate(floor, floor.Root);
+
+            // FloorLightField lê Light.intensity/range/color de cada tocha — precisa rodar
+            // ENQUANTO essas luzes ainda estão no estado recém-plantado. O DynamicLightBudget,
+            // logo abaixo, zera a intensidade de toda tocha até a primeira avaliação (LateUpdate)
+            // decidir o tier — se o campo fosse propagado DEPOIS do orçamento, semearia tudo com
+            // intensidade 0 e sairia sem luz nenhuma. Não depende de RegionLightMask/PropPopulator,
+            // então a ordem em relação aos dois é livre.
+            if (lightField != null) lightField.Rebuild(floor);
 
             if (propPopulator != null)
                 propPopulator.Populate(floor, archetypeByRoom, propRng, floor.Root);

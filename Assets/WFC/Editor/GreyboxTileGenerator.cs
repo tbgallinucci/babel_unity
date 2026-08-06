@@ -112,6 +112,11 @@ public class GreyboxTileGenerator : EditorWindow
     float F => floorThickness;
 
     // Peças estruturais -------------------------------------------------------
+    // SEM peça de teto de propósito: o teto de produção é uma única "tampa" (plane) sobre
+    // o footprint inteiro do grid, feita depois de instanciar (ver WFCFloorGenerator.
+    // BuildCeiling / CeilingBuilder) — muito mais barata que uma peça de teto por célula, e
+    // como o de dentro de uma sala nunca vê acima da parede, o resultado visual é idêntico.
+    // O harness WFCFloorPreview não tinha essa etapa; é aí que mora o "sem teto" do preview.
     GameObject Floor() // laje de piso, topo em y=0
         => Cube("Floor", new Vector3(0, -F * 0.5f, 0), new Vector3(S, F, S), matFloor);
 

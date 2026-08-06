@@ -40,6 +40,22 @@ namespace Babel.VFX
         Key,
     }
 
+    /// <summary>Qual das duas luzes da tocha projeta sombra quando o tier é Key.</summary>
+    public enum ShadowCasterMode
+    {
+        /// <summary>Só o Spot (keyLight) projeta sombra. Padrão — o mais barato dos que dão oclusão.</summary>
+        KeyOnly,
+
+        /// <summary>Só o Point (fillLight) projeta sombra. Inverte o padrão — teste de vazamento por parede.</summary>
+        FillOnly,
+
+        /// <summary>As duas projetam sombra. Mais caro: soma o atlas do Spot com o do Point.</summary>
+        Both,
+
+        /// <summary>Nenhuma projeta sombra, nem no tier Key. Mais barato; sem oclusão nenhuma.</summary>
+        Neither,
+    }
+
     [AddComponentMenu("Babel/Torch Light")]
     public sealed class TorchLight : MonoBehaviour
     {
@@ -51,8 +67,13 @@ namespace Babel.VFX
                  "6 slices de atlas contra 1 do Spot. Vazio = procura um Light do tipo Point nos filhos.")]
         [SerializeField] private Light fillLight;
 
-        [Tooltip("Qualidade da sombra quando no tier Key.")]
+        [Tooltip("Qualidade da sombra do Spot quando ele está projetando (KeyOnly ou Both).")]
         [SerializeField] private LightShadows keyShadows = LightShadows.Soft;
+
+        [Tooltip("Qualidade da sombra do Point quando ele está projetando (FillOnly ou Both). " +
+                 "Sombra de Point custa 6 slices de atlas contra 1 do Spot — ligar isto é " +
+                 "pesado, use só pra testar se resolve o vazamento de luz por parede.")]
+        [SerializeField] private LightShadows fillShadows = LightShadows.Soft;
 
         [Tooltip("Graus que o Spot inclina para BAIXO. Não é enfeite: o anchor de parede aponta " +
                  "na horizontal, então o chão recebe a luz em ângulo rasante — e é aí que o depth " +
@@ -60,6 +81,15 @@ namespace Babel.VFX
                  "direção da luz da normal do chão e a acne colapsa, permitindo baixar o bias. " +
                  "25–35 costuma bastar. 0 = mantém a horizontal do anchor.")]
         [Range(0f, 80f)] [SerializeField] private float keyPitchDegrees = 30f;
+
+        [Tooltip("Qual(is) luz(es) da tocha projeta(m) sombra quando o tier é Key. No tier Fill " +
+                 "nenhuma das duas projeta sombra, sempre — isto só controla o comportamento " +
+                 "das tochas mais perto do jogador. Use pra testar o vazamento de luz do Point " +
+                 "por parede: KeyOnly = padrão (Spot sombra, Point preenche sem sombra, mais " +
+                 "barato); FillOnly = inverte (Point ganha sombra, Spot vira puro preenchimento); " +
+                 "Both = as duas projetam (mais caro: soma o custo de atlas das duas); Neither = " +
+                 "nenhuma projeta mesmo no tier Key (mais barato ainda, sem oclusão nenhuma).")]
+        [SerializeField] private ShadowCasterMode shadowCasterMode = ShadowCasterMode.KeyOnly;
 
         private LightFlicker keyFlicker;
         private LightFlicker fillFlicker;
@@ -82,6 +112,16 @@ namespace Babel.VFX
 
         /// <summary>Só para o orçamento medir distância sem pagar GetComponent toda avaliação.</summary>
         public Transform Anchor => transform;
+
+        /// <summary>
+        /// Acesso de leitura às duas luzes — usado pelo FloorLightField pra semear o flood-fill
+        /// com a MESMA cor/intensidade/range que a tocha já usa, sem duplicar tuning num lugar
+        /// segundo. `EnsureAwake()` aqui é defensivo: se algo ler isto antes do Awake rodar
+        /// (não deveria acontecer — Instantiate() chama Awake sincronamente —, mas é grátis
+        /// garantir), a auto-descoberta ainda dispara na hora.
+        /// </summary>
+        public Light KeyLight { get { EnsureAwake(); return keyLight; } }
+        public Light FillLight { get { EnsureAwake(); return fillLight; } }
 
         private void Awake() => EnsureAwake();
 
@@ -120,8 +160,11 @@ namespace Babel.VFX
                 fillFlicker = fillLight.GetComponent<LightFlicker>();
             }
 
-            // Invariante do desenho, não preferência: o fill existe justamente por ser barato.
-            if (fillLight != null) fillLight.shadows = LightShadows.None;
+            // Não força mais shadows=None aqui: quem decide agora é o Apply(), a cada tier,
+            // olhando shadowCasterMode. Antes isto sobrescrevia o Shadow Type do prefab/Inspector
+            // de volta pra None uma vez só no Awake — e o Apply nunca tocava fillLight.shadows,
+            // então o Point ficava permanentemente sem sombra e mudar o campo no Editor não
+            // tinha efeito nenhum visível.
         }
 
         // =====================================================================
@@ -145,16 +188,25 @@ namespace Babel.VFX
 
             bool on = newTier != TorchTier.Off;
 
+            // Sombra só existe no tier Key (o Fill nunca projeta, pra manter a maioria das
+            // tochas barata). Dentro do tier Key, shadowCasterMode escolhe qual das duas —
+            // ou as duas, ou nenhuma — de fato projeta.
+            bool keyCasts = newTier == TorchTier.Key &&
+                (shadowCasterMode == ShadowCasterMode.KeyOnly || shadowCasterMode == ShadowCasterMode.Both);
+            bool fillCasts = newTier == TorchTier.Key &&
+                (shadowCasterMode == ShadowCasterMode.FillOnly || shadowCasterMode == ShadowCasterMode.Both);
+
             if (keyLight != null)
             {
                 keyLight.enabled = on;
-                keyLight.shadows = newTier == TorchTier.Key ? keyShadows : LightShadows.None;
+                keyLight.shadows = keyCasts ? keyShadows : LightShadows.None;
                 PushIntensity(keyLight, keyFlicker, keyBaseIntensity);
             }
 
             if (fillLight != null)
             {
                 fillLight.enabled = on;
+                fillLight.shadows = fillCasts ? fillShadows : LightShadows.None;
                 PushIntensity(fillLight, fillFlicker, fillBaseIntensity);
             }
         }

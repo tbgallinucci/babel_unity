@@ -169,6 +169,145 @@ namespace Babel.Floor
         }
 
         // =====================================================================
+        //  Partição fina — só para contenção de luz
+        // =====================================================================
+
+        /// <summary>
+        /// Mais fino que <see cref="Build"/>: sala continua 1 partição por região dela (já é
+        /// pequena o bastante), mas o CORREDOR — que no AnnotatedGrid é UMA região só,
+        /// <see cref="AnnotatedGrid.CorridorRegion"/>, de propósito para o resto do jogo — é
+        /// fatiado em pedaços de até <paramref name="corridorChunkSize"/> células contíguas,
+        /// cada um com id próprio.
+        ///
+        /// Por que isto precisa existir: sem fatiar, dois braços de corredor que dão uma volta
+        /// e ficam fisicamente perto um do outro são, para <see cref="Build"/>, A MESMA região —
+        /// mesma cor, mesma luz — mesmo com parede sólida entre eles. Region-based containment
+        /// não segura essa fronteira porque, pra ele, não existe fronteira nenhuma ali.
+        ///
+        /// Devolve o mapa célula → id de partição. Some da chave quem não está em nenhuma
+        /// região playable (vazio/rocha) — RegionLightMask trata esse caso à parte
+        /// (união das partições vizinhas), igual já fazia com região crua.
+        /// </summary>
+        public static Dictionary<int, int> BuildLightPartition(AnnotatedGrid grid, int corridorChunkSize = 4)
+        {
+            var cellToPartition = new Dictionary<int, int>();
+            if (grid == null) return cellToPartition;
+
+            Grid3D g = grid.Grid;
+            int nextId = 0;
+
+            // Salas: 1 id por região, sem fatiar — já são do tamanho de uma sala.
+            var roomPartitionOf = new Dictionary<int, int>();
+            for (int cell = 0; cell < g.CellCount; cell++)
+            {
+                int region = grid.GetRegion(cell);
+                if (region < AnnotatedGrid.FirstRoomRegion) continue;
+
+                if (!roomPartitionOf.TryGetValue(region, out int id))
+                {
+                    id = nextId++;
+                    roomPartitionOf[region] = id;
+                }
+                cellToPartition[cell] = id;
+            }
+
+            // Corredor: BFS fatiando em pedaços de corridorChunkSize células. `cellToPartition`
+            // É a própria marca de "já visitado" — evita a armadilha clássica de marcar
+            // visited no ENQUEUE: se marcasse lá, células que sobram na fila quando o chunk
+            // enche ficariam "visitadas" sem partição nenhuma, perdidas para sempre (o laço
+            // externo nunca mais as escolhe como semente). Marcando só no DEQUEUE, sobra de
+            // fila vira exatamente a semente do próximo chunk.
+            var queue = new Queue<int>();
+            for (int seed = 0; seed < g.CellCount; seed++)
+            {
+                if (grid.GetRegion(seed) != AnnotatedGrid.CorridorRegion) continue;
+                if (cellToPartition.ContainsKey(seed)) continue;
+
+                int chunkId = nextId++;
+                queue.Clear();
+                queue.Enqueue(seed);
+                int count = 0;
+
+                while (queue.Count > 0 && count < corridorChunkSize)
+                {
+                    int cell = queue.Dequeue();
+                    if (cellToPartition.ContainsKey(cell)) continue; // pode ter sido enfileirado 2x
+
+                    cellToPartition[cell] = chunkId;
+                    count++;
+
+                    foreach (Direction dir in Directions.Horizontal)
+                    {
+                        if (!g.TryGetNeighbor(cell, dir, out int neighbor)) continue;
+                        if (cellToPartition.ContainsKey(neighbor)) continue;
+                        if (grid.GetRegion(neighbor) != AnnotatedGrid.CorridorRegion) continue;
+                        if (grid.GetBorder(cell, dir) == BorderLabel.Wall) continue;
+
+                        queue.Enqueue(neighbor);
+                    }
+                }
+            }
+
+            return cellToPartition;
+        }
+
+        /// <summary>
+        /// O grafo de adjacência sobre a partição fina — mesma regra de <see cref="Build"/>
+        /// (borda não-Wall conecta), só que por partição em vez de por região crua.
+        ///
+        /// USO: exclusivamente <see cref="LightMask"/>, pra decidir quais cores VIZINHAS
+        /// entram na máscara de uma tocha (luz atravessando porta aberta é correto). NÃO
+        /// use isto para colorir (<see cref="AssignColors"/>) — ver <see cref="BuildAllPartitionNeighbors"/>.
+        /// </summary>
+        public static Dictionary<int, List<int>> BuildLightNeighbors(AnnotatedGrid grid, Dictionary<int, int> cellToPartition)
+            => BuildPartitionNeighbors(grid, cellToPartition, passableOnly: true);
+
+        /// <summary>
+        /// Grafo de adjacência ESPACIAL completa sobre a partição fina: conecta duas
+        /// partições vizinhas mesmo quando a borda entre elas é parede sólida.
+        ///
+        /// USO: exclusivamente <see cref="AssignColors"/>. É o grafo que garante a invariante
+        /// que todo o resto do sistema depende ("mesma cor ⇒ longe o bastante pro Range da
+        /// tocha nunca alcançar"): duas salas coladas por uma parede comum estão a distância
+        /// ZERO uma da outra, então elas PRECISAM de cores diferentes mesmo sem porta entre
+        /// elas — senão a tocha de uma ilumina a outra através da parede, sem shadow map
+        /// nenhum pra impedir (rendering layer não sabe que existe parede; só sabe se o bit
+        /// bate). <see cref="BuildLightNeighbors"/> (só borda passável) SUBESTIMA essa
+        /// adjacência: como não existe grafo entre duas salas separadas por parede sólida,
+        /// nada impedia o guloso de dar a mesma cor pra elas — e parede reta entre duas
+        /// salas vizinhas é o caso MAIS comum do andar, não uma borda rara.
+        /// </summary>
+        public static Dictionary<int, List<int>> BuildAllPartitionNeighbors(AnnotatedGrid grid, Dictionary<int, int> cellToPartition)
+            => BuildPartitionNeighbors(grid, cellToPartition, passableOnly: false);
+
+        private static Dictionary<int, List<int>> BuildPartitionNeighbors(
+            AnnotatedGrid grid, Dictionary<int, int> cellToPartition, bool passableOnly)
+        {
+            var neighbors = new Dictionary<int, List<int>>();
+            if (grid == null || cellToPartition == null) return neighbors;
+
+            Grid3D g = grid.Grid;
+
+            for (int cell = 0; cell < g.CellCount; cell++)
+            {
+                if (!cellToPartition.TryGetValue(cell, out int partition)) continue;
+                if (!neighbors.ContainsKey(partition)) neighbors[partition] = new List<int>();
+
+                foreach (Direction dir in Directions.Horizontal)
+                {
+                    if (!g.TryGetNeighbor(cell, dir, out int neighbor)) continue;
+                    if (!cellToPartition.TryGetValue(neighbor, out int other) || other == partition) continue;
+                    if (passableOnly && grid.GetBorder(cell, dir) == BorderLabel.Wall) continue;
+
+                    Connect(neighbors, partition, other);
+                    Connect(neighbors, other, partition);
+                }
+            }
+
+            return neighbors;
+        }
+
+        // =====================================================================
         //  Mundo → célula
         // =====================================================================
 

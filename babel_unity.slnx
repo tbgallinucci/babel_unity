@@ -3,7 +3,7 @@
   <Project Path="WFC.Runtime.csproj" />
   <Project Path="WFC.Data.csproj" />
   <Project Path="WFC.Tests.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="WFC.Editor.csproj" />
   <Project Path="WFC.Core.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

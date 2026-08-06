@@ -16,10 +16,29 @@
 //  iluminar só a própria região e as ligadas a ela por passagem. Luz cruzando
 //  uma porta aberta é correta; o que não pode é cruzar parede.
 //
-//  LIMITE conhecido: isto contém luz entre REGIÕES, não dentro de uma. Um pilar
-//  no meio de uma sala grande continua sendo atravessado pelo fill — para isso
-//  só a Etapa 3 (grid de luz propagada por flood-fill) ou a sombra das poucas
-//  tochas Key, que cobre a vizinhança imediata do jogador.
+//  NÃO usa a região crua do AnnotatedGrid direto — usa RegionGraph.BuildLightPartition.
+//  Motivo: no AnnotatedGrid, TODO corredor do andar é UMA região só
+//  (AnnotatedGrid.CorridorRegion), de propósito, para o resto do jogo. Region-based
+//  containment sobre essa região crua não segura nada entre dois braços de corredor
+//  que dão uma volta e ficam fisicamente perto um do outro — pra ele são a MESMA
+//  região, mesma cor, mesma luz, mesmo com parede sólida entre eles (foi exatamente
+//  o vazamento reportado numa curva de corredor). BuildLightPartition fatia o
+//  corredor em pedaços menores só para este propósito; sala continua 1:1 com a
+//  região dela (já é pequena o bastante, ver skeleton.roomWidth/roomDepth).
+//
+//  LIMITE conhecido 1: isto contém luz entre PARTIÇÕES, não dentro de uma. Um pilar
+//  no meio de uma sala grande (ou dentro do mesmo pedaço de corredor) continua
+//  sendo atravessado pelo fill — quem cobre esse caso é o FloorLightField (Etapa 3,
+//  granularidade de célula) e a sombra das poucas tochas Key.
+//
+//  LIMITE conhecido 2: a coloração evita colisão entre partições espacialmente
+//  adjacentes (RegionGraph.BuildAllPartitionNeighbors, parede sólida inclusa — foi
+//  bug até este comentário existir: só usava borda passável, então sala colada em
+//  sala por parede comum sem porta podia sair com a mesma cor e a luz atravessava
+//  bem ali). O que SOBRA sem cobertura é o caso bem mais raro: duas partições que
+//  não compartilham célula vizinha nenhuma, mas ficam perto no MUNDO porque o andar
+//  dobra sobre si mesmo (ala A e ala B, sem toque direto, mas próximas no espaço).
+//  Se aparecer, o RegionGraph.ColorCount (7) é o primeiro lugar pra olhar.
 // ============================================================================
 
 using System.Collections.Generic;
@@ -41,14 +60,21 @@ namespace Babel.Floor
                  "uma vez por andar e não muda; só quem anda precisa de atualização.")]
         [Min(0.02f)] [SerializeField] private float updateInterval = 0.15f;
 
+        [Tooltip("Corredor é fatiado em pedaços de até N células contíguas, só para conter luz " +
+                 "(a região continua UMA só para o resto do jogo). Pedaço menor = fronteira mais " +
+                 "fina, mas mais partições no grafo. 4 células (24 m com Cell Size 6) fica perto " +
+                 "do alcance de uma tocha — reduzir mais raramente compensa.")]
+        [Min(1)] [SerializeField] private int corridorChunkSize = 4;
+
         [SerializeField] private bool logSummary = true;
 
         private AnnotatedGrid grid;
+        private Dictionary<int, int> cellToPartition;
         private Dictionary<int, List<int>> neighbors;
         private Dictionary<int, uint> colors;
 
         private readonly List<Renderer> rendererBuffer = new List<Renderer>();
-        private readonly Dictionary<Transform, int> lastRegionOf = new Dictionary<Transform, int>();
+        private readonly Dictionary<Transform, int> lastPartitionOf = new Dictionary<Transform, int>();
 
         private float nextUpdate;
 
@@ -80,8 +106,17 @@ namespace Babel.Floor
             }
 
             grid = floor.Grid;
-            neighbors = RegionGraph.Build(grid);
-            colors = RegionGraph.AssignColors(neighbors);
+            cellToPartition = RegionGraph.BuildLightPartition(grid, corridorChunkSize);
+
+            // Dois grafos, dois papéis: `neighbors` (só borda passável) decide quais cores
+            // VIZINHAS entram na máscara de uma tocha, pra luz atravessar porta aberta.
+            // A coloração em si precisa do grafo espacial COMPLETO (parede sólida inclusa) —
+            // senão duas salas coladas por parede comum, sem porta, podiam sair com a mesma
+            // cor e a luz voltava a atravessar exatamente essa parede. Ver comentário em
+            // RegionGraph.BuildAllPartitionNeighbors.
+            neighbors = RegionGraph.BuildLightNeighbors(grid, cellToPartition);
+            var colorAdjacency = RegionGraph.BuildAllPartitionNeighbors(grid, cellToPartition);
+            colors = RegionGraph.AssignColors(colorAdjacency);
 
             var distinct = new HashSet<uint>(colors.Values);
             ColorsUsed = distinct.Count;
@@ -90,7 +125,7 @@ namespace Babel.Floor
             int torches = StampTorches(floor.Root);
 
             if (logSummary)
-                Debug.Log($"[RegionLightMask] Andar {floor.FloorNumber}: {colors.Count} região(ões) " +
+                Debug.Log($"[RegionLightMask] Andar {floor.FloorNumber}: {colors.Count} partição(ões) " +
                           $"em {ColorsUsed} cor(es), {torches} tocha(s) contida(s).", this);
 
             nextUpdate = 0f;
@@ -99,10 +134,11 @@ namespace Babel.Floor
         public void Clear()
         {
             grid = null;
+            cellToPartition = null;
             neighbors = null;
             colors = null;
             ColorsUsed = 0;
-            lastRegionOf.Clear();
+            lastPartitionOf.Clear();
         }
 
         /// <summary>
@@ -130,13 +166,13 @@ namespace Babel.Floor
                 Transform piece = pieces[cell];
                 if (piece == null) continue;
 
-                int region = grid.GetRegion(cell);
+                bool hasPartition = cellToPartition.TryGetValue(cell, out int partition);
 
-                // Preenchimento maciço (rocha) não pertence a região nenhuma, mas é parede de
-                // quem encosta nele. Recebe a UNIÃO das cores vizinhas, senão ficaria só no
-                // Default e apareceria iluminado por tochas de qualquer canto do andar.
-                uint mask = region >= 0
-                    ? MaskOf(region)
+                // Preenchimento maciço (rocha) não pertence a partição nenhuma, mas é parede de
+                // quem encosta nele — ver UnionOfAdjacent pra regra exata (não é uma união cega:
+                // rocha tocando 2+ partições diferentes fica sem cor de tocha nenhuma, de propósito).
+                uint mask = hasPartition
+                    ? MaskOf(partition)
                     : UnionOfAdjacent(cell);
 
                 rendererBuffer.Clear();
@@ -157,33 +193,57 @@ namespace Babel.Floor
             int stamped = 0;
             foreach (TorchLight torch in torches)
             {
-                if (torch == null || torch.Region < 0) continue;
+                if (torch == null) continue;
 
-                torch.SetRenderingLayerMask(RegionGraph.LightMask(torch.Region, neighbors, colors));
+                // A partição, não torch.Region: torch.Region é a região CRUA do AnnotatedGrid
+                // (útil como metadado, mas não é a chave que `colors`/`neighbors` usam agora —
+                // eles são indexados por partição fina, não por região).
+                int cell = RegionGraph.WorldToCell(grid, torch.Anchor.position);
+                if (cell < 0 || !cellToPartition.TryGetValue(cell, out int partition)) continue;
+
+                torch.SetRenderingLayerMask(RegionGraph.LightMask(partition, neighbors, colors));
                 stamped++;
             }
 
             return stamped;
         }
 
-        private uint MaskOf(int region)
-            => colors != null && colors.TryGetValue(region, out uint mask) ? mask : RegionGraph.DefaultMask;
+        private uint MaskOf(int partition)
+            => colors != null && colors.TryGetValue(partition, out uint mask) ? mask : RegionGraph.DefaultMask;
 
+        /// <summary>
+        /// Rocha (Wildcard_SolidFill) é UM Renderer só, com até 4 faces visíveis — cada uma
+        /// podendo encostar numa sala diferente. Se desse a união das cores de todas as salas
+        /// vizinhas (o comportamento antigo), uma rocha fina espremida entre a sala A (com
+        /// tocha) e a sala B (sem nada a ver com ela) saía com a máscara das DUAS — e como não
+        /// dá pra iluminar só a face que aponta pra A, a face que aponta pra B acendia junto.
+        /// Foi exatamente o vazamento reportado num trecho fino de rocha entre duas salas.
+        ///
+        /// Por isso: toca só UMA partição → recebe a cor dela normalmente (caso comum, seguro).
+        /// Toca 2+ partições DIFERENTES, ou nenhuma → fica sem cor de tocha nenhuma (máscara 0,
+        /// não Default — Default está em toda tocha do andar, então usar Default aqui reabriria
+        /// o mesmo problema só que pior, com QUALQUER tocha do mapa). Ainda pega o ambiente da
+        /// cena (Rendering Layers não bloqueia isso), só não pega luz de tocha específica.
+        /// Rocha um pouco mais escura no caso ambíguo nunca incomodou ninguém; brilho sem fonte
+        /// visível foi literalmente a queixa que começou toda esta investigação.
+        /// </summary>
         private uint UnionOfAdjacent(int cell)
         {
-            uint mask = 0u;
+            int found = -1;
+            bool ambiguous = false;
 
             foreach (WFC.Core.Direction dir in WFC.Core.Directions.Horizontal)
             {
                 if (!grid.Grid.TryGetNeighbor(cell, dir, out int neighbor)) continue;
+                if (!cellToPartition.TryGetValue(neighbor, out int partition)) continue;
 
-                int region = grid.GetRegion(neighbor);
-                if (region >= 0) mask |= MaskOf(region);
+                if (found == -1) found = partition;
+                else if (partition != found) ambiguous = true;
             }
 
-            // Rocha cercada só de rocha: ninguém a vê, mas deixá-la em 0 significaria
-            // "nenhuma luz jamais" — e um dia alguém abre uma passagem ali.
-            return mask != 0u ? mask : RegionGraph.DefaultMask;
+            if (ambiguous || found < 0) return 0u;
+
+            return MaskOf(found);
         }
 
         // =====================================================================
@@ -201,16 +261,16 @@ namespace Babel.Floor
                 if (target == null) continue;
 
                 int cell = RegionGraph.WorldToCell(grid, target.position);
-                int region = cell >= 0 ? grid.GetRegion(cell) : -1;
+                int partition = cell >= 0 && cellToPartition.TryGetValue(cell, out int p) ? p : -1;
 
-                // Só reescreve quando a região MUDA: percorrer a hierarquia do jogador a cada
+                // Só reescreve quando a partição MUDA: percorrer a hierarquia do jogador a cada
                 // 0.15 s para reescrever o mesmo valor seria puro desperdício.
-                if (lastRegionOf.TryGetValue(target, out int previous) && previous == region) continue;
-                lastRegionOf[target] = region;
+                if (lastPartitionOf.TryGetValue(target, out int previous) && previous == partition) continue;
+                lastPartitionOf[target] = partition;
 
-                // Fora de qualquer região (entre andares, em cima de rocha): volta ao Default,
+                // Fora de qualquer partição (entre andares, em cima de rocha): volta ao Default,
                 // que toda tocha ilumina. Preferível a um personagem preto no meio da tela.
-                uint mask = region >= 0 ? MaskOf(region) : RegionGraph.DefaultMask;
+                uint mask = partition >= 0 ? MaskOf(partition) : RegionGraph.DefaultMask;
 
                 rendererBuffer.Clear();
                 target.GetComponentsInChildren(true, rendererBuffer);

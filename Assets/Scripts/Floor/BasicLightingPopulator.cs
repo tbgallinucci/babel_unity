@@ -33,6 +33,25 @@
 //                               Corredores ficam fora da regra (toda a malha
 //                               deles é UMA região — escolher um eixo apagaria
 //                               metade dos corredores do andar).
+//
+//  DUAS CAMADAS A MAIS, adicionadas depois de "algumas salas ficam sem luz
+//  nenhuma" ter aparecido em teste — as duas regras acima combinadas (pouca
+//  parede reta + metade descartada pelo eixo) zeram fácil numa sala pequena:
+//
+//    • Fase por trecho, não offset global → cada trecho reto começa a contagem
+//      "a cada N" numa fase derivada de HASH da própria célula (RunPhase), não
+//      sempre do mesmo startOffset. Sem isso, trechos em posição equivalente
+//      do andar (comum em kit repetitivo) acendiam sempre no mesmo lugar
+//      relativo — lia como grade. Continua 100% determinístico: mesma seed,
+//      mesmas luzes sempre, só que sem alinhamento visual entre trechos.
+//    • Piso mínimo por sala (PromoteUnderlitRooms) → sala que zerou ganha 1
+//      anchor de volta, puxado de preferência do eixo que oneAxisPerRoom tinha
+//      descartado. Só mexe na sala que precisa.
+//
+//  E uma peça de ATMOSFERA: anchor que a regra "a cada N" NÃO escolheu não
+//  fica vazio — se `unlitTorchPrefab` estiver preenchido, nasce ali uma versão
+//  decorativa (sem Light) do mesmo soquete. Ideia: nem toda tocha do calabouço
+//  precisa estar acesa pra parecer que o lugar é habitado.
 // ============================================================================
 
 using System.Collections.Generic;
@@ -53,8 +72,28 @@ namespace Babel.Floor
         [Tooltip("Acende 1 a cada N anchors dentro do mesmo trecho reto de parede.")]
         [Min(1)] [SerializeField] private int everyNWalls = 3;
 
-        [Tooltip("Deslocamento a partir do início do trecho antes da 1ª luz (0 = primeira parede do trecho).")]
+        [Tooltip("Somado à fase (derivada da célula) de CADA trecho antes de aplicar 'a cada N' — " +
+                 "não é mais um offset global único: cada trecho já começa numa fase própria, " +
+                 "isto aqui só desloca todas elas junto, se quiser afinar o resultado inteiro.")]
         [Min(0)] [SerializeField] private int startOffset = 0;
+
+        [Tooltip("Toda SALA (corredor não conta — não tem 'a sala', é a malha inteira) precisa " +
+                 "acabar com pelo menos este tanto de anchor aceso. Sala que zerou por causa da " +
+                 "combinação 'a cada N' + eixo por sala ganha anchor promovido de volta, puxado do " +
+                 "eixo que tinha sido descartado quando existir. 0 = desliga a garantia.")]
+        [Min(0)] [SerializeField] private int minLitAnchorsPerRoom = 1;
+
+        [Tooltip("Opcional. Instanciado (sem acender nada) numa FRAÇÃO dos anchors que a regra " +
+                 "'a cada N' NÃO escolheu — mesmo soquete de parede, só que apagado. Puramente " +
+                 "decorativo: dá a impressão de mais tocha no andar sem aumentar o orçamento de " +
+                 "luz real. Vazio = nenhum anchor apagado ganha nada, como sempre foi.")]
+        [SerializeField] private GameObject unlitTorchPrefab;
+
+        [Tooltip("Fração dos anchors APAGADOS que ganham a versão decorativa — o resto continua " +
+                 "vazio, senão vira 'todo soquete tem alguma coisa' (denso demais, lê como grade " +
+                 "de novo, só que de tocha apagada em vez de acesa). 0.3 = ~30% dos apagados ganham " +
+                 "prop; o resto do slot simplesmente não tem nada, como antes.")]
+        [Range(0f, 1f)] [SerializeField] private float unlitTorchDensity = 0.3f;
 
         [Tooltip("Dentro de uma SALA, acende só as paredes de UM eixo — o resultado é um par de " +
                  "paredes opostas iluminado e as outras duas no escuro, em vez de luz nos quatro lados. " +
@@ -97,44 +136,170 @@ namespace Babel.Floor
 
             AnnotatedGrid annotated = floor.Grid;
             Grid3D grid = annotated.Grid;
-            int chosen = 0;
             int missingTorchComponent = 0;
 
+            // `candidates` é o pool INTEIRO (as duas regras de graça — sem quina, só parede
+            // única/paralela — já filtraram isto no kit). `spacingPool` é o que sobra depois do
+            // eixo por sala; é dele que a regra "a cada N" escolhe. A promoção de sala zerada
+            // (abaixo) puxa do pool INTEIRO de propósito — é como ela consegue devolver um
+            // anchor do eixo que o filtro descartou.
             int beforeAxisFilter = lightAnchors.Count;
-            if (oneAxisPerRoom) lightAnchors = FilterOneAxisPerRoom(lightAnchors, annotated);
+            List<SpawnAnchor> candidates = lightAnchors;
+            List<SpawnAnchor> spacingPool = oneAxisPerRoom ? FilterOneAxisPerRoom(candidates, annotated) : candidates;
 
-            foreach (List<SpawnAnchor> run in GroupIntoStraightRuns(lightAnchors, grid))
+            var chosen = new HashSet<SpawnAnchor>();
+            foreach (List<SpawnAnchor> run in GroupIntoStraightRuns(spacingPool, grid))
             {
-                for (int i = startOffset; i < run.Count; i += everyNWalls)
-                {
-                    SpawnAnchor anchor = run[i];
-                    GameObject instance = Instantiate(lightPrefab, anchor.transform.position,
-                                                       anchor.transform.rotation, parent);
-                    instance.name = $"{lightPrefab.name} (célula {anchor.cellIndex})";
+                int phase = RunPhase(run);
+                for (int i = phase; i < run.Count; i += everyNWalls)
+                    chosen.Add(run[i]);
+            }
 
-                    // Em que sala/corredor esta tocha nasceu. É a única informação que o
-                    // RegionLightMask não consegue redescobrir depois: a POSIÇÃO da tocha fica
-                    // 1 m à frente da parede, e uma parede entre duas regiões deixa esse ponto
-                    // ambíguo. A célula do anchor não é ambígua.
-                    var torch = instance.GetComponentInChildren<TorchLight>(true);
-                    if (torch != null) torch.Region = annotated.GetRegion(anchor.cellIndex);
-                    else if (missingTorchComponent++ == 0)
-                        Debug.LogWarning($"[BasicLightingPopulator] '{lightPrefab.name}' não tem o componente " +
-                                         "TorchLight — sem ele a tocha fica fora do orçamento de luz e da " +
-                                         "contenção por sala (acesa sempre, com sombra sempre, atravessando " +
-                                         "parede). Adicione o componente ao prefab.", this);
+            int promoted = minLitAnchorsPerRoom > 0
+                ? PromoteUnderlitRooms(chosen, candidates, annotated)
+                : 0;
 
-                    spawned.Add(instance);
-                    chosen++;
-                }
+            int litCount = 0, unlitCount = 0;
+            foreach (SpawnAnchor anchor in candidates)
+            {
+                bool isLit = chosen.Contains(anchor);
+                if (!isLit && !ShouldDecorate(anchor)) continue; // maioria dos apagados fica vazia, de propósito
+
+                GameObject prefab = isLit ? lightPrefab : unlitTorchPrefab;
+                if (prefab == null) continue; // apagada sem prefab decorativo: fica vazia, como sempre foi
+
+                GameObject instance = Instantiate(prefab, anchor.transform.position,
+                                                   anchor.transform.rotation, parent);
+                instance.name = isLit
+                    ? $"{prefab.name} (célula {anchor.cellIndex})"
+                    : $"{prefab.name} (célula {anchor.cellIndex}, apagada)";
+                spawned.Add(instance);
+
+                if (!isLit) { unlitCount++; continue; }
+                litCount++;
+
+                // Em que sala/corredor esta tocha nasceu. É a única informação que o
+                // RegionLightMask não consegue redescobrir depois: a POSIÇÃO da tocha fica
+                // 1 m à frente da parede, e uma parede entre duas regiões deixa esse ponto
+                // ambíguo. A célula do anchor não é ambígua.
+                var torch = instance.GetComponentInChildren<TorchLight>(true);
+                if (torch != null) torch.Region = annotated.GetRegion(anchor.cellIndex);
+                else if (missingTorchComponent++ == 0)
+                    Debug.LogWarning($"[BasicLightingPopulator] '{lightPrefab.name}' não tem o componente " +
+                                     "TorchLight — sem ele a tocha fica fora do orçamento de luz e da " +
+                                     "contenção por sala (acesa sempre, com sombra sempre, atravessando " +
+                                     "parede). Adicione o componente ao prefab.", this);
             }
 
             if (logSummary)
-                Debug.Log($"[BasicLightingPopulator] Andar {floor.FloorNumber}: {chosen} luz(es) de " +
-                          $"{lightAnchors.Count} anchor(s) candidato(s) " +
+                Debug.Log($"[BasicLightingPopulator] Andar {floor.FloorNumber}: {litCount} luz(es) " +
+                          $"({promoted} promovida(s) por sala sem luz), {unlitCount} apagada(s) " +
+                          $"decorativa(s), de {candidates.Count} anchor(s) candidato(s) " +
                           $"({beforeAxisFilter} antes da regra de eixo por sala).", this);
 
-            return chosen;
+            return litCount;
+        }
+
+        /// <summary>
+        /// Fase do "a cada N" DESTE trecho — derivada só da célula do primeiro anchor dele, via
+        /// hash determinístico (nunca RNG: mesma seed tem que gerar sempre a mesma luz). Sem
+        /// isto, todo trecho começava contando do mesmo `startOffset`, e trechos em posição
+        /// equivalente do kit (comum, kit é repetitivo) acendiam sempre no mesmo lugar relativo
+        /// — o que lia como padrão de grade no andar inteiro, mesmo a regra em si sendo por
+        /// trecho. `startOffset` continua existindo, somado por cima, para afinar o conjunto todo.
+        /// </summary>
+        private int RunPhase(List<SpawnAnchor> run)
+        {
+            if (everyNWalls <= 1 || run.Count == 0) return 0;
+            uint hash = MixHash(run[0].cellIndex);
+            return (int)((hash + (uint)startOffset) % (uint)everyNWalls);
+        }
+
+        /// <summary>
+        /// Mistura de bits determinística (não é RNG — mesma entrada sempre dá a mesma saída,
+        /// sem consumir nenhum stream de seed). Só existe para não usar cellIndex cru como fase:
+        /// cellIndex cru varia de forma regular pela ordem de varredura do grid, e "regular" é
+        /// exatamente o padrão de grade que isto está tentando quebrar.
+        /// </summary>
+        private static uint MixHash(int value)
+        {
+            unchecked
+            {
+                uint x = (uint)value;
+                x = ((x >> 16) ^ x) * 0x45d9f3bu;
+                x = ((x >> 16) ^ x) * 0x45d9f3bu;
+                x = (x >> 16) ^ x;
+                return x;
+            }
+        }
+
+        /// <summary>
+        /// Decide, por hash determinístico (salt diferente de RunPhase, pra não correlacionar as
+        /// duas decisões), se ESTE anchor apagado ganha a versão decorativa. Distribuição
+        /// aproximadamente uniforme em [0,1) comparada contra <see cref="unlitTorchDensity"/> —
+        /// "aproximadamente" já é o suficiente aqui, isto é atmosfera, não orçamento.
+        /// </summary>
+        private bool ShouldDecorate(SpawnAnchor anchor)
+        {
+            if (unlitTorchDensity <= 0f) return false;
+            if (unlitTorchDensity >= 1f) return true;
+
+            uint hash = MixHash(unchecked(anchor.cellIndex * 486187739 + 0x5bd1e995));
+            float t = hash / (float)uint.MaxValue;
+            return t < unlitTorchDensity;
+        }
+
+        /// <summary>
+        /// Garante <see cref="minLitAnchorsPerRoom"/> anchor(s) aceso(s) por SALA (corredor fica
+        /// de fora — não tem "a sala dele", é a malha inteira, e já não passa pelo filtro de
+        /// eixo). Sem isto, a combinação "a cada N" + eixo por sala facilmente zera sala pequena.
+        ///
+        /// Promove do MENOR cellIndex entre os candidatos da sala que ainda não estão acesos —
+        /// determinístico, sem sortear nada. Puxa de <paramref name="allCandidates"/> (o pool
+        /// ANTES do filtro de eixo), não do pool já filtrado: é assim que uma sala sem nada no
+        /// eixo vencedor ainda consegue recuperar um anchor do eixo perdedor.
+        /// </summary>
+        private int PromoteUnderlitRooms(HashSet<SpawnAnchor> chosen, List<SpawnAnchor> allCandidates, AnnotatedGrid grid)
+        {
+            var byRoom = new Dictionary<int, List<SpawnAnchor>>();
+            foreach (SpawnAnchor anchor in allCandidates)
+            {
+                int region = grid.GetRegion(anchor.cellIndex);
+                if (region < AnnotatedGrid.FirstRoomRegion) continue; // só sala; corredor fica de fora
+
+                if (!byRoom.TryGetValue(region, out List<SpawnAnchor> list))
+                {
+                    list = new List<SpawnAnchor>();
+                    byRoom[region] = list;
+                }
+                list.Add(anchor);
+            }
+
+            int promoted = 0;
+            foreach (List<SpawnAnchor> roomAnchors in byRoom.Values)
+            {
+                int lit = 0;
+                foreach (SpawnAnchor a in roomAnchors)
+                    if (chosen.Contains(a)) lit++;
+
+                SpawnAnchor next = null;
+                while (lit < minLitAnchorsPerRoom)
+                {
+                    next = null;
+                    foreach (SpawnAnchor a in roomAnchors)
+                    {
+                        if (chosen.Contains(a)) continue;
+                        if (next == null || a.cellIndex < next.cellIndex) next = a;
+                    }
+
+                    if (next == null) break; // sala sem candidato suficiente pro mínimo pedido — não é erro
+                    chosen.Add(next);
+                    lit++;
+                    promoted++;
+                }
+            }
+
+            return promoted;
         }
 
         public void Clear()

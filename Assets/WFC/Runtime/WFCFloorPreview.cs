@@ -34,6 +34,16 @@ namespace WFC.Runtime
         [Tooltip("Roda o flood-fill entrada→escada depois de gerar. Barato; deixe ligado.")]
         public bool validateConnectivity = true;
 
+        [Header("Teto")]
+        [Tooltip("Mesma 'tampa' que o WFCFloorGenerator de produção cria — sem isto o preview " +
+                 "sai com o topo aberto pro void (é o que diferenciava o harness da produção).")]
+        public bool addCeiling = true;
+
+        [Tooltip("Vazio = material padrão (cinza) do Plane primitivo.")]
+        public Material ceilingMaterial;
+
+        public float ceilingOverhang = 0.5f;
+
         [Header("Gizmos")]
         public bool drawGridGizmos = true;
 
@@ -59,6 +69,20 @@ namespace WFC.Runtime
         public int[] LastVariants => _variants;
         public AnnotatedGrid LastGrid => _grid;
         public SkeletonGenerator.Result LastSkeleton => _skeleton;
+        public int LastSeed => lastSeed;
+
+        /// <summary>
+        /// True só depois de um Generate() que terminou em "OK". Existe pra quem monta em cima
+        /// deste harness (ex.: um populador de preview de arte do lado do jogo) não precisar
+        /// adivinhar sucesso fatiando o texto de LastStatus.
+        /// </summary>
+        public bool LastSuccess { get; private set; }
+
+        /// <summary>Raiz da geometria instanciada pelo último Generate(). Null se falhou ou instantiatePrefabs=false.</summary>
+        public Transform GeneratedRoot { get; private set; }
+
+        /// <summary>Peça por célula do último Generate() — mesmo array que o TileInstancer devolveu.</summary>
+        public Transform[] PiecesByCell { get; private set; }
 
         /// <summary>Contrato de saída para o populador externo (Decisão 4).</summary>
         public IReadOnlyList<SpawnAnchor> Anchors => _anchors;
@@ -69,6 +93,10 @@ namespace WFC.Runtime
         [ContextMenu("Gerar")]
         public void Generate()
         {
+            LastSuccess = false;
+            GeneratedRoot = null;
+            PiecesByCell = null;
+
             if (floorSpec == null) { Report("FloorSpec não atribuído."); return; }
             if (floorSpec.tileSet == null) { Report("O FloorSpec não tem TileSet."); return; }
             if (!floorSpec.tileSet.IsBaked)
@@ -141,8 +169,14 @@ namespace WFC.Runtime
 
             _variants = fill.Variants;
             _anchors.AddRange(fill.Anchors);
+            GeneratedRoot = fill.Root;
+            PiecesByCell = fill.PiecesByCell;
 
             if (!instantiatePrefabs) TileInstancer.ClearGenerated(transform);
+            else if (addCeiling && GeneratedRoot != null)
+                CeilingBuilder.Build(GeneratedRoot, transform.position, floorSpec.gridSize,
+                                     floorSpec.cellSize, floorSpec.cellHeight, ceilingOverhang,
+                                     ceilingMaterial);
 
             foreach (string w in filler.Warnings) Debug.LogWarning($"[WFCFloorPreview] {w}", this);
 
@@ -151,6 +185,7 @@ namespace WFC.Runtime
             lastDoors = _grid.CountJunctions(Junction.Door);
             int vaos = _grid.CountJunctions(Junction.Opening);
 
+            LastSuccess = true;
             Report($"OK — {_skeleton.Rooms.Count} salas, {lastDoors} portas, " +
                    $"{vaos} vãos, seed {seed}, {fill.Attempts} tentativa(s), " +
                    $"solve {lastSolveMs:F1} ms, instanciar {lastInstantiateMs:F1} ms" +
@@ -159,7 +194,13 @@ namespace WFC.Runtime
         }
 
         [ContextMenu("Limpar")]
-        public void ClearGenerated() => TileInstancer.ClearGenerated(transform);
+        public void ClearGenerated()
+        {
+            TileInstancer.ClearGenerated(transform);
+            LastSuccess = false;
+            GeneratedRoot = null;
+            PiecesByCell = null;
+        }
 
         private void Report(string message)
         {
