@@ -191,7 +191,7 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6018316857538242690}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 13
   m_Type: 0
   m_Color: {r: 0.9716981, g: 0.835256, b: 0.48235294, a: 0.36862746}

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 554a6fdbb77c4e94aa3d36dcef400d1e, type: 3}
   m_Name: Module_Corner
   m_EditorClassIdentifier: WFC.Data::WFC.Data.ModuleDefinition
-  prefab: {fileID: 2089730655031420674, guid: 4d4acaa5bdba8024d9d91dcb66b29fc0, type: 3}
+  prefab: {fileID: 3300403219040300194, guid: 4d4acaa5bdba8024d9d91dcb66b29fc0, type: 3}
   faces:
   - socket: open
     flipped: 0

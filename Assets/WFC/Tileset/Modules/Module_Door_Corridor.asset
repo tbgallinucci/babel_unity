@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 554a6fdbb77c4e94aa3d36dcef400d1e, type: 3}
   m_Name: Module_Door_Corridor
   m_EditorClassIdentifier: WFC.Data::WFC.Data.ModuleDefinition
-  prefab: {fileID: 4107203405697546398, guid: c260f9360a9535847b823b3b0708de5e, type: 3}
+  prefab: {fileID: 6365826080282558264, guid: c260f9360a9535847b823b3b0708de5e, type: 3}
   faces:
   - socket: wall
     flipped: 0

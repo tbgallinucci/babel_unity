@@ -16,8 +16,8 @@ MonoBehaviour:
   gridSize: {x: 24, y: 1, z: 24}
   cellSize: 6
   cellHeight: 10
-  randomSeed: 0
-  seed: -799482805
+  randomSeed: 1
+  seed: 12345
   sealBorders: 1
   borderSocket: wall
   skeleton:
