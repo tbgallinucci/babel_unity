@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: FloorSpec_Demo
   m_EditorClassIdentifier: WFC.Data::WFC.Data.FloorSpec
   tileSet: {fileID: 11400000, guid: de8408462539e424ba2635cc347b499e, type: 2}
+  cornerFillerPrefab: {fileID: 5612147719531159311, guid: 6562758f7ecfc024996ad2b55b18303c, type: 3}
+  cornerFillerEverywhere: 1
   gridSize: {x: 24, y: 1, z: 24}
   cellSize: 6
   cellHeight: 10

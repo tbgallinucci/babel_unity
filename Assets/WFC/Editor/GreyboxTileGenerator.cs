@@ -38,6 +38,9 @@ public class GreyboxTileGenerator : EditorWindow
     float wallLightOffset = 1.0f; // distância do anchor de luz até o centro da parede (ver WallLight)
     float wallLightHeightRatio = 0.5f; // altura do anchor de luz, fração de Wall Height
     float chestAnchorInset = 1.0f; // distância do anchor de baú até a quina, na diagonal (ver CornerChestAnchor)
+    float columnShaftRadius = 0.5f;  // raio da haste central da coluna
+    float columnCapRadius   = 0.9f;  // raio da base/capitel (maior que a haste)
+    float columnCapHeight   = 0.4f;  // altura de cada disco de base/capitel (bem menor que a haste)
     string outputFolder  = "Assets/WFC/GreyboxTiles";
 
     Material matFloor, matWall, matAccent;
@@ -49,8 +52,9 @@ public class GreyboxTileGenerator : EditorWindow
     {
         EditorGUILayout.LabelField("Tileset mínimo — greybox", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
-            "Gera os 10 prefabs básicos (piso, parede, canto, corredor, beco, porta, " +
-            "porta-de-corredor, escada + 2 coringas) com cubos primitivos. Idempotente: regenerar sobrescreve.",
+            "Gera os 11 prefabs básicos (piso, parede, canto, corredor, beco, porta, " +
+            "porta-de-corredor, escada, coluna + 2 coringas) + 1 prop (filler de quina, sem " +
+            "piso — ver FloorSpec.cornerFillerPrefab) com primitivos. Idempotente: regenerar sobrescreve.",
             MessageType.Info);
 
         EditorGUILayout.Space();
@@ -81,10 +85,28 @@ public class GreyboxTileGenerator : EditorWindow
                             "(afastando das duas paredes ao mesmo tempo), em metros."),
             chestAnchorInset);
 
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Coluna (Tile_Column + Prop_ColumnFiller)", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox(
+            "Mesmos parâmetros valem pras duas peças: Tile_Column (com piso, decorativa, o " +
+            "solver do WFC escolhe onde entra) e Prop_ColumnFiller (sem piso, plantada à parte " +
+            "nos vértices do grid — ver FloorSpec.cornerFillerPrefab). Se aumentar o Wall " +
+            "Thickness, considere aumentar o Cap Radius junto pra continuar cobrindo a costura.",
+            MessageType.None);
+        columnShaftRadius = EditorGUILayout.FloatField(
+            new GUIContent("Shaft Radius", "Raio da haste central do pilar, em metros."), columnShaftRadius);
+        columnCapRadius = EditorGUILayout.FloatField(
+            new GUIContent("Cap Radius", "Raio dos discos de base/capitel nas pontas — maior que a haste. " +
+                            "No Prop_ColumnFiller é o que determina se a costura de parede fica coberta."),
+            columnCapRadius);
+        columnCapHeight = EditorGUILayout.FloatField(
+            new GUIContent("Cap Height", "Altura de cada disco de base/capitel — bem menor que a haste."),
+            columnCapHeight);
+
         outputFolder   = EditorGUILayout.TextField("Output Folder", outputFolder);
 
         EditorGUILayout.Space();
-        if (GUILayout.Button("Gerar 10 tiles (greybox)", GUILayout.Height(32)))
+        if (GUILayout.Button("Gerar 11 tiles (greybox)", GUILayout.Height(32)))
             Generate();
         if (GUILayout.Button("Apagar tiles gerados"))
             DeleteGenerated();
@@ -105,12 +127,14 @@ public class GreyboxTileGenerator : EditorWindow
         BuildDoor();
         BuildDoorCorridor();
         BuildStairs();
+        BuildColumn();
+        BuildColumnFiller();
         BuildSolidFill();
         BuildAir();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[GreyboxTileGenerator] 10 tiles gerados em {outputFolder}");
+        Debug.Log($"[GreyboxTileGenerator] 11 tiles + 1 prop gerados em {outputFolder}");
     }
 
     // Atalhos de dimensão
@@ -277,6 +301,51 @@ public class GreyboxTileGenerator : EditorWindow
         }
         Save(root);
     }
+    // Pilar decorativo: haste fina + disco largo/baixo em cada ponta (base e capitel),
+    // igual coluna clássica. Pivô no centro da célula, mesma convenção das outras peças —
+    // a haste some dentro do disco nas pontas (a soma das alturas cobre 0..H, sem gap).
+    //
+    // Restrição de spawn (ficar só em cantos de corredor a 90°, tipo Tile_Corner) NÃO é
+    // feita aqui: este gerador só cria a geometria do prefab, não ModuleDefinition/FloorSpec.
+    // Ver "Opcional — restringir onde ele aparece" em
+    // Docs/Development/Engine/Planning/Guide - Adicionar Modulo Pilar ao WFC Tileset.md
+    // pra registrar a regra de sala manualmente depois de gerar este prefab.
+    void BuildColumn()
+    {
+        var root = Root("Tile_Column");
+        Floor().transform.SetParent(root.transform, false);
+        BuildColumnGeometry(root.transform);
+        Save(root);
+    }
+
+    // Base + haste + capitel — compartilhado entre Tile_Column (peça normal, com Floor,
+    // escolhida pelo solver) e Prop_ColumnFiller (sem Floor, plantado à parte nos vértices
+    // do grid). Caps não podem "comer" a coluna inteira: clamp na altura da haste.
+    void BuildColumnGeometry(Transform parent)
+    {
+        float capH   = columnCapHeight;
+        float shaftH = Mathf.Max(0.05f, H - capH * 2f);
+        float shaftCy = capH + shaftH * 0.5f;
+
+        Cylinder("Column_Base", new Vector3(0, capH * 0.5f, 0), columnCapRadius, capH, matAccent, parent);
+        Cylinder("Column_Shaft", new Vector3(0, shaftCy, 0), columnShaftRadius, shaftH, matWall, parent);
+        Cylinder("Column_Capital", new Vector3(0, H - capH * 0.5f, 0), columnCapRadius, capH, matAccent, parent);
+    }
+
+    // Mesma geometria do Tile_Column (base + haste + capitel), mas SEM o cubo de Floor.
+    // Existe pra um uso diferente: não é escolhido pelo solver do WFC pra uma célula, é
+    // plantado à PARTE (TileInstancer.PlaceCornerFillers, via FloorSpec.cornerFillerPrefab)
+    // exatamente em cima dos VÉRTICES do grid onde duas paredes perpendiculares de células
+    // diferentes se encontram — tampa a espessura de parede que fica exposta nessa costura.
+    // Se tivesse o Floor de 6×6m do Tile_Column normal, cada vértice ganharia uma laje de
+    // piso sobreposta ao piso que já existe ali — por isso este prop não tem chão nenhum.
+    void BuildColumnFiller()
+    {
+        var root = Root("Prop_ColumnFiller");
+        BuildColumnGeometry(root.transform);
+        Save(root);
+    }
+
     void BuildSolidFill()
     {
         var root = Root("Wildcard_SolidFill");
@@ -299,6 +368,20 @@ public class GreyboxTileGenerator : EditorWindow
         if (parent != null) go.transform.SetParent(parent, false);
         go.transform.localPosition = pos;
         go.transform.localScale = size;
+        if (mat != null) go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+        return go;
+    }
+
+    // Cylinder primitivo da Unity: diâmetro 1 e altura 2 por padrão (raio 0.5, meio-altura 1),
+    // então scale.x/z = radius*2 e scale.y = height*0.5 dão o raio/altura finais pedidos.
+    // Já vem com CapsuleCollider — mesma lógica do Cube() pro NavMesh excluir a área do pilar.
+    GameObject Cylinder(string name, Vector3 pos, float radius, float height, Material mat, Transform parent = null)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        go.name = name;
+        if (parent != null) go.transform.SetParent(parent, false);
+        go.transform.localPosition = pos;
+        go.transform.localScale = new Vector3(radius * 2f, height * 0.5f, radius * 2f);
         if (mat != null) go.GetComponent<MeshRenderer>().sharedMaterial = mat;
         return go;
     }
@@ -363,7 +446,8 @@ public class GreyboxTileGenerator : EditorWindow
     {
         string[] names = {
             "Tile_Floor_Open","Tile_Wall","Tile_Corner","Tile_Corridor","Tile_DeadEnd",
-            "Tile_Door","Tile_Door_Corridor","Tile_Stairs","Wildcard_SolidFill","Wildcard_Air"
+            "Tile_Door","Tile_Door_Corridor","Tile_Stairs","Tile_Column","Prop_ColumnFiller",
+            "Wildcard_SolidFill","Wildcard_Air"
         };
         foreach (var n in names)
             AssetDatabase.DeleteAsset($"{outputFolder}/{n}.prefab");

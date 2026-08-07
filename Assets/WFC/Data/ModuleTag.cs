@@ -26,5 +26,7 @@ namespace WFC.Data
         Stairs   = 1 << 6,
         Empty    = 1 << 7,
         Wildcard = 1 << 8,   // marca peças válvula-de-escape (SolidFill/Air), p/ debug
+        Column   = 1 << 9,   // pilar decorativo; também serve de "filler" de quina — ver
+                              // TileSet.FindPrefabWithTag e TileInstancer.PlaceCornerFillers
     }
 }

@@ -166,8 +166,12 @@ namespace WFC.Runtime
             {
                 var sw2 = Stopwatch.StartNew();
                 result.PiecesByCell = new Transform[g.CellCount];
+                // FloorSpec.cornerFillerPrefab (opcional): planta à parte, nas quinas ENTRE
+                // células — ver TileInstancer.PlaceCornerFillers. Null = pula o passo.
+                GameObject cornerFiller = _spec != null ? _spec.cornerFillerPrefab : null;
+                bool fillerEverywhere = _spec == null || _spec.cornerFillerEverywhere;
                 result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors, _layer,
-                                                  result.PiecesByCell);
+                                                  result.PiecesByCell, cornerFiller, fillerEverywhere);
                 sw2.Stop();
                 result.InstantiateMilliseconds = sw2.Elapsed.TotalMilliseconds;
             }
