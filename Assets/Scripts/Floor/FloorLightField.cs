@@ -8,7 +8,7 @@
 //  precisar trocar shader de nenhum objeto.
 //
 //  Por que Texture2D (não Texture3D): todo FloorSpec deste projeto usa
-//  gridSize.y = 1 (andar plano — ver FloorSpec_Demo.asset). O domínio do
+//  gridSize.y = 1 (andar plano — ver FloorSpec_CenterWall.asset). O domínio do
 //  flood-fill é efetivamente 2D. Se um dia existir andar com Y > 1, dá pra
 //  trocar a textura por 3D sem mexer no LightFieldBaker (ele já devolve por
 //  célula 3D) — só a montagem da textura aqui precisaria mudar.

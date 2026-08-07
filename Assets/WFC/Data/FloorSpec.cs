@@ -33,23 +33,14 @@ namespace WFC.Data
         [Header("Tileset")]
         public TileSet tileSet;
 
-        [Header("Filler de quina (opcional)")]
-        [Tooltip("Prefab plantado à PARTE (fora do solver do WFC) em todo vértice do grid onde " +
-                 "duas paredes perpendiculares DE CÉLULAS DIFERENTES se encontram — tampa a " +
-                 "espessura de parede exposta que sobra nessas costuras. Precisa ser um prop SEM " +
-                 "'Floor' (é plantado no VÉRTICE do grid, não no centro de uma célula — reusar um " +
-                 "Tile_* inteiro sobreporia a laje de piso dele em cima do piso já existente). Ver " +
-                 "TileInstancer.PlaceCornerFillers. Null = não planta nada (comportamento antigo).")]
-        public GameObject cornerFillerPrefab;
-
-        [Tooltip("Desligado (padrão): pula o vértice quando uma única peça (ex. Tile_Corner) já " +
-                 "'é dona' das duas paredes que se cruzam ali — é o caso comum das quinas EXTERNAS " +
-                 "de sala, que já ficam geometricamente OK sozinhas; sem esse filtro elas ganhavam " +
-                 "coluna redundante em excesso. Cruzamentos INTERNOS (célula diferente de cada lado, " +
-                 "sem dono único) continuam sempre cobertos, ligado ou desligado. Ligado: ignora esse " +
-                 "filtro e planta em TODO cruzamento perpendicular, sem exceção — mais colunas, use " +
-                 "se perceber algum tipo de peça escapando do filtro (relatar caso a caso).")]
-        public bool cornerFillerEverywhere;
+        [Header("Paredes de grid dual (opcional)")]
+        [Tooltip("Preenchido = as paredes vêm destas peças, plantadas nos VÉRTICES do grid depois " +
+                 "de instanciar as células (ver DualGridWallBuilder). Nesse modo as peças do TileSet " +
+                 "devem ser SÓ PISO — se elas trouxerem parede junto, as duas geometrias se " +
+                 "sobrepõem.\n\n" +
+                 "Vazio = a peça de cada célula precisa trazer a parede embutida (era o modo do " +
+                 "kit Assets/WFC/GreyboxTiles, removido — nenhum tileset vivo usa mais este caminho).")]
+        public WallPieceSet wallPieces;
 
         [Header("Grid")]
         [Tooltip("Dimensões em CÉLULAS. Y = 1 é o caso de um andar plano (é o da Fase 0/1).")]

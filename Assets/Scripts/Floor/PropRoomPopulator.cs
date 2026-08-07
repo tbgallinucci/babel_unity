@@ -10,10 +10,10 @@
 //   • useAnchor = false (padrão) — célula de piso totalmente aberta dentro do
 //     retângulo da sala, igual o EnemyPopulator já faz. Bom pra prop solto.
 //   • useAnchor = true — só nasce em cima de um SpawnAnchor do 'anchorKind'
-//     escolhido, coletado pelo TileInstancer nas peças que o autor do
-//     tileset marcou (mesmo mecanismo do Anchor_Light_* do
-//     BasicLightingPopulator, só que kind = Prop/WallProp/Chest). Sem anchor
-//     daquele tipo na sala, a entrada simplesmente não nasce ali — não é bug.
+//     escolhido, coletado pelo TileInstancer/DualGridWallBuilder nas peças que
+//     o autor do tileset marcou (mesmo mecanismo do Anchor_Light_* do
+//     BasicLightingPopulator, só que kind = Prop/WallProp/Chest/Pillar). Sem
+//     anchor daquele tipo na sala, a entrada simplesmente não nasce ali — não é bug.
 //
 //  ACOPLAMENTO COM O ENEMYPOPULATOR: o sorteio de arquétipo por sala é
 //  separado da instanciação (RollArchetypes vs Populate) justamente para o
@@ -40,6 +40,14 @@ namespace Babel.Floor
 
         [Tooltip("Raio de segurança em volta da entrada onde nenhum prop nasce (mesma ideia do EnemyPopulator).")]
         [SerializeField] private float safeRadiusFromEntrance = 6f;
+
+        [Tooltip("Só vale pra prop SEM anchor (useAnchor=false). Tira este tanto de células " +
+                 "abertas aleatórias e fica com a mais PRÓXIMA do centro da sala, em vez de uma " +
+                 "célula qualquer — sem isso o prop tinha a mesma chance de cair colado numa porta " +
+                 "(célula de porta também é 'aberta') que no meio da sala. 1 = sem viés nenhum " +
+                 "(comportamento antigo, uniforme). Mais alto = puxa mais forte pro centro; " +
+                 "continua determinístico pela seed, só limita as amostras que participam.")]
+        [Min(1)] [SerializeField] private int centerBiasSamples = 4;
 
         [SerializeField] private bool logSummary = true;
 
@@ -90,13 +98,14 @@ namespace Babel.Floor
 
             AnnotatedGrid grid = floor.Grid;
 
-            // Anchors elegíveis (Prop/WallProp/Chest), indexados por célula — Light fica de
-            // fora, é território do BasicLightingPopulator.
+            // Anchors elegíveis (Prop/WallProp/Chest/Pillar), indexados por célula — Light fica
+            // de fora, é território do BasicLightingPopulator.
             var anchorsByCell = new Dictionary<int, List<SpawnAnchor>>();
             foreach (SpawnAnchor a in floor.Anchors)
             {
                 if (a == null) continue;
-                if (a.kind != SpawnAnchorKind.Prop && a.kind != SpawnAnchorKind.WallProp && a.kind != SpawnAnchorKind.Chest)
+                if (a.kind != SpawnAnchorKind.Prop && a.kind != SpawnAnchorKind.WallProp
+                    && a.kind != SpawnAnchorKind.Chest && a.kind != SpawnAnchorKind.Pillar)
                     continue;
 
                 if (!anchorsByCell.TryGetValue(a.cellIndex, out List<SpawnAnchor> list))
@@ -135,6 +144,14 @@ namespace Babel.Floor
                         anchorCandidates.AddRange(list);
                 }
 
+                // Centro geométrico do retângulo da sala, em mundo — usado só pelo viés de
+                // centralização abaixo (prop sem anchor). min/max world do próprio retângulo que
+                // o laço acima já percorreu, não precisa de outra passada pelo grid.
+                Vector3 roomMinWorld = grid.CellToWorld(grid.Grid.Index(room.Rect.xMin, 0, room.Rect.yMin));
+                Vector3 roomMaxWorld = grid.CellToWorld(
+                    grid.Grid.Index(room.Rect.xMax - 1, 0, room.Rect.yMax - 1));
+                Vector3 roomCenterWorld = (roomMinWorld + roomMaxWorld) * 0.5f;
+
                 int min = Mathf.Min(archetype.propCount.x, archetype.propCount.y);
                 int max = Mathf.Max(archetype.propCount.x, archetype.propCount.y);
                 int wanted = min + rng.NextInt(max - min + 1);
@@ -164,9 +181,10 @@ namespace Babel.Floor
                     else
                     {
                         if (openCandidates.Count == 0) continue;
-                        int cell = openCandidates[rng.NextInt(openCandidates.Count)];
+                        int cell = PickCellNearCenter(openCandidates, roomCenterWorld, grid, rng, centerBiasSamples);
                         pos = grid.CellToWorld(cell);
                         rot = Quaternion.Euler(0f, (float)(rng.NextDouble() * 360.0), 0f);
+                        openCandidates.Remove(cell); // não repete o mesmo ponto pro próximo prop desta sala
                     }
 
                     GameObject instance = Instantiate(entry.prefab, pos, rot, parent);
@@ -245,6 +263,29 @@ namespace Babel.Floor
 
         private static bool AtCap(RoomArchetype.PropEntry entry, Dictionary<RoomArchetype.PropEntry, int> countByEntry)
             => entry.maxCount > 0 && countByEntry.TryGetValue(entry, out int n) && n >= entry.maxCount;
+
+        /// <summary>
+        /// "Melhor de K amostras": tira <paramref name="sampleSize"/> células aleatórias (com
+        /// reposição — o mesmo índice pode sair mais de uma vez, sem problema, é só amostra) e
+        /// devolve a mais próxima de <paramref name="centerWorld"/>. sampleSize=1 é exatamente o
+        /// pick uniforme de antes (sem viés); valores maiores concentram mais pro centro sem
+        /// exigir ordenar a lista inteira nem sortear por peso de verdade.
+        /// </summary>
+        private static int PickCellNearCenter(List<int> candidates, Vector3 centerWorld, AnnotatedGrid grid,
+                                               IRandom rng, int sampleSize)
+        {
+            int best = candidates[rng.NextInt(candidates.Count)];
+            float bestSqrDist = (grid.CellToWorld(best) - centerWorld).sqrMagnitude;
+
+            for (int i = 1; i < sampleSize; i++)
+            {
+                int candidate = candidates[rng.NextInt(candidates.Count)];
+                float sqrDist = (grid.CellToWorld(candidate) - centerWorld).sqrMagnitude;
+                if (sqrDist < bestSqrDist) { best = candidate; bestSqrDist = sqrDist; }
+            }
+
+            return best;
+        }
 
         private static int FindAnchorIndex(List<SpawnAnchor> candidates, SpawnAnchorKind kind, IRandom rng)
         {

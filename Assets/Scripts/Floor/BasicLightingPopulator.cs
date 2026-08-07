@@ -80,18 +80,27 @@ namespace Babel.Floor
         [Min(0)] [SerializeField] private int startOffset = 0;
 
         [Tooltip("Toda SALA (corredor não conta — não tem 'a sala', é a malha inteira) precisa " +
-                 "acabar com pelo menos este tanto de anchor aceso. Sala que zerou por causa da " +
-                 "combinação 'a cada N' + eixo por sala ganha anchor promovido de volta, puxado do " +
-                 "eixo que tinha sido descartado quando existir. 0 = desliga a garantia. " +
-                 "IGNORADO quando 'Per Wall Light Bounds' está ligado — aquela regra é mais " +
-                 "específica (por parede, não por sala) e já cobre este caso de sobra.")]
-        [Min(0)] [SerializeField] private int minLitAnchorsPerRoom = 1;
+                 "acabar com pelo menos este tanto de anchor aceso NO TOTAL (soma de todos os " +
+                 "lados). SEMPRE roda, mesmo com 'Per Wall Light Bounds' ligado — aquela regra " +
+                 "garante mínimo por LADO, esta garante o total da sala; uma sala com só 1-2 lados " +
+                 "com candidato (dois lados sem Wall_Straight nenhum, por exemplo) podia passar no " +
+                 "teto por parede e ainda sair com menos que o esperado no total. Promove do menor " +
+                 "cellIndex entre os candidatos que sobraram, sem sortear nada. 0 = desliga.")]
+        [Min(0)] [SerializeField] private int minLitAnchorsPerRoom = 3;
+
+        [Tooltip("Mesma garantia do campo acima, mas por TRECHO RETO de CORREDOR (a malha de " +
+                 "corredores é UMA região só, então isto não é 'por sala' — é por PEDAÇO reto " +
+                 "contíguo). Sem isto um trecho curto podia cair na fase errada da regra 'a cada N' " +
+                 "e ficar com zero tocha, sem ninguém prometer o mínimo de volta (a promoção por " +
+                 "sala de cima explicitamente pula corredor). 0 = desliga.")]
+        [Min(0)] [SerializeField] private int minLitPerCorridorRun = 2;
 
         [Tooltip("Garante, por TRECHO RETO de parede de SALA (corredor não conta), entre " +
                  "'Min Lit Per Wall' e 'Max Lit Per Wall' tochas acesas — não por sala inteira, " +
                  "por LADO da sala. Ligado, isto ignora o filtro de eixo do oneAxisPerRoom para " +
-                 "as paredes de sala (density roda nos 4 lados, não só no eixo mais comprido) e " +
-                 "substitui minLitAnchorsPerRoom/PromoteUnderlitRooms, que viram redundantes.")]
+                 "as paredes de sala (density roda nos 4 lados, não só no eixo mais comprido). " +
+                 "'Min Lit Anchors Per Room' continua rodando por cima — os dois se somam, não " +
+                 "são mais alternativos.")]
         [SerializeField] private bool perWallLightBounds = true;
 
         [Tooltip("Mínimo de tochas acesas por trecho reto de parede de SALA, quando " +
@@ -181,11 +190,19 @@ namespace Babel.Floor
                     chosen.Add(run[i]);
             }
 
-            int promoted, demoted = 0;
+            int promoted = 0, demoted = 0;
             if (perWallLightBounds)
-                promoted = EnforceWallLightBounds(chosen, candidates, annotated, grid, out demoted);
-            else
-                promoted = minLitAnchorsPerRoom > 0 ? PromoteUnderlitRooms(chosen, candidates, annotated) : 0;
+                promoted += EnforceWallLightBounds(chosen, candidates, annotated, grid, out demoted);
+
+            // Sempre roda, independente de perWallLightBounds — aquela garante mínimo por LADO,
+            // esta garante o TOTAL da sala (soma de todos os lados). Não são mais "ou".
+            if (minLitAnchorsPerRoom > 0)
+                promoted += PromoteUnderlitRooms(chosen, candidates, annotated);
+
+            // Corredor fica de fora das duas garantias acima (region-based, ver seus comentários) —
+            // esta é a garantia equivalente pra ele, por trecho reto contíguo.
+            if (minLitPerCorridorRun > 0)
+                promoted += EnforceCorridorMinimum(chosen, candidates, annotated, grid, minLitPerCorridorRun);
 
             int litCount = 0, unlitCount = 0;
             foreach (SpawnAnchor anchor in candidates)
@@ -383,6 +400,42 @@ namespace Babel.Floor
                         chosen.Add(unlit[i]);
                         promoted++;
                     }
+                }
+            }
+
+            return promoted;
+        }
+
+        /// <summary>
+        /// Equivalente ao <see cref="EnforceWallLightBounds"/>, só que pro lado que ele
+        /// explicitamente pula: corredor. Não tem "a sala do corredor" (é uma região só pra todo
+        /// o andar), então a garantia aqui é por TRECHO RETO contíguo — um corredor longo com
+        /// várias curvas vira vários trechos independentes, cada um com seu próprio mínimo.
+        /// Só promove (sem teto de máximo — corredor não tem o mesmo risco de "grade" que
+        /// motivou o maxLitPerWall, que existe pra sala pequena com N baixo).
+        /// </summary>
+        private int EnforceCorridorMinimum(HashSet<SpawnAnchor> chosen, List<SpawnAnchor> allCandidates,
+                                            AnnotatedGrid annotated, Grid3D grid, int minPerRun)
+        {
+            int promoted = 0;
+
+            List<SpawnAnchor> corridorCandidates = allCandidates
+                .Where(a => annotated.GetRegion(a.cellIndex) == AnnotatedGrid.CorridorRegion)
+                .ToList();
+
+            foreach (List<SpawnAnchor> run in GroupIntoStraightRuns(corridorCandidates, grid))
+            {
+                int lit = run.Count(a => chosen.Contains(a));
+                if (lit >= minPerRun) continue;
+
+                List<SpawnAnchor> unlit = run.Where(a => !chosen.Contains(a))
+                                              .OrderBy(a => a.cellIndex)
+                                              .ToList();
+                int need = Mathf.Min(minPerRun - lit, unlit.Count); // trecho curto demais: melhor esforço, não é erro
+                for (int i = 0; i < need; i++)
+                {
+                    chosen.Add(unlit[i]);
+                    promoted++;
                 }
             }
 

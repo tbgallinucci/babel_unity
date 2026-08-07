@@ -166,12 +166,25 @@ namespace WFC.Runtime
             {
                 var sw2 = Stopwatch.StartNew();
                 result.PiecesByCell = new Transform[g.CellCount];
-                // FloorSpec.cornerFillerPrefab (opcional): planta à parte, nas quinas ENTRE
-                // células — ver TileInstancer.PlaceCornerFillers. Null = pula o passo.
-                GameObject cornerFiller = _spec != null ? _spec.cornerFillerPrefab : null;
-                bool fillerEverywhere = _spec == null || _spec.cornerFillerEverywhere;
                 result.Root = TileInstancer.Build(_parent, _tileSet, grid, result.Variants, result.Anchors, _layer,
-                                                  result.PiecesByCell, cornerFiller, fillerEverywhere);
+                                                  result.PiecesByCell);
+
+                // Paredes de grid dual: peças plantadas nos VÉRTICES, depois das células. Só
+                // roda se o spec trouxer o conjunto completo — nesse modo as peças do TileSet
+                // são só piso, e é daqui que sai TODA a parede do andar.
+                //
+                // Fica sob a mesma raiz que as células (result.Root) de propósito: o
+                // NavMeshSurface, o static batching e o ClearGenerated do andar operam por essa
+                // raiz, e parede que ficasse fora dela não seria bakeada nem limpa junto.
+                if (_spec != null && _spec.wallPieces.IsComplete)
+                {
+                    int walls = DualGridWallBuilder.Build(result.Root, _parent, grid,
+                                                          _spec.wallPieces, _layer, result.Anchors);
+                    if (walls == 0)
+                        Warnings.Add("As peças de parede de grid dual estão preenchidas, mas nenhuma " +
+                                     "foi plantada — o esqueleto não marcou parede em borda nenhuma.");
+                }
+
                 sw2.Stop();
                 result.InstantiateMilliseconds = sw2.Elapsed.TotalMilliseconds;
             }

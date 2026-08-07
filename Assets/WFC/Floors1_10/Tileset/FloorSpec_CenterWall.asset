@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8984f9305677d24489b8d7c55ed97366, type: 3}
+  m_Name: FloorSpec_CenterWall
+  m_EditorClassIdentifier: WFC.Data::WFC.Data.FloorSpec
+  tileSet: {fileID: 11400000, guid: 39d49a272c718fd498dd92905fcad19c, type: 2}
+  wallPieces:
+    end: {fileID: 7641468973015150276, guid: 8e5cfe5469f1cc34fae1fa09980f177a, type: 3}
+    straight: {fileID: 179627064661314285, guid: d4c9a579962b930439ff5733061890f4, type: 3}
+    corner: {fileID: 1126456300288978571, guid: d23fe3f1622180d4b97f0477dbe8f70b, type: 3}
+    tee: {fileID: 1058540013457541877, guid: f564c56022e208a459e518965f5bd6e6, type: 3}
+    cross: {fileID: 4633057062161571318, guid: bbdb4b17ec5057c48a005d17e77b48e0, type: 3}
+    armWall: {fileID: 2136932447238783265, guid: 3c2a4a4bda12be44e92e46143518ab09, type: 3}
+    armWallAtHub: {fileID: 722200326127720036, guid: 3ec77747e3ed76a4e9a3c4fa009b4aad, type: 3}
+    armDoor: {fileID: 7509760616175983558, guid: 12a6dd7c7b0b7e74a967bba8550cb93e, type: 3}
+    armDoorAtHub: {fileID: 8226497304883839023, guid: 18577f05ee0d7654ea7c473c2259e04d, type: 3}
+    hubEnd: {fileID: 1705129617584950518, guid: e8e544fc7430b4a45bf61476bdb327ba, type: 3}
+    hubJunction: {fileID: 8515589014125551810, guid: 8b401068e470cb74daa5167a6ff254e5, type: 3}
+  gridSize: {x: 16, y: 1, z: 16}
+  cellSize: 6
+  cellHeight: 10
+  randomSeed: 1
+  seed: 12345
+  sealBorders: 1
+  borderSocket: wall
+  skeleton:
+    targetRooms: 8
+    roomWidth: {x: 3, y: 6}
+    roomDepth: {x: 3, y: 6}
+    roomMargin: 1
+    borderPadding: 1
+    placementAttempts: 60
+    extraLoopChance: 0.15
+    useDoors: 1
+    roomRoleWeights: []
+  maxAttempts: 12
+  entropyNoise: 0.0001
+  roleRules:
+  - role: 4
+    requiredTags: 64
+    forbiddenTags: 0
+  - role: 1
+    requiredTags: 2
+    forbiddenTags: 320
+  - role: 3
+    requiredTags: 2
+    forbiddenTags: 320
+  - role: 2
+    requiredTags: 2
+    forbiddenTags: 64
+  - role: 0
+    requiredTags: 256
+    forbiddenTags: 0

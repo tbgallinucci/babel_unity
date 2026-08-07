@@ -1,0 +1,11 @@
+prefab_path,anchor_kind,set_display_name,weight,spawn_chance
+Assets/WFC/Decoration/Bottle_05.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Jug_02.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Pot_01.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Candle_01.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Chair_05.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Table_01.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Rock_01.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Mud_04.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/Wood_02.prefab,Prop,Mesa Clutter,1,1
+Assets/WFC/Decoration/WallDecor_05.prefab,WallProp,Parede,1,1

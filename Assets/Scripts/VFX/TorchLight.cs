@@ -150,8 +150,30 @@ namespace Babel.VFX
                 // rotação da raiz é sobrescrita pelo Instantiate do populador (que usa a rotação
                 // do anchor). Inclinar no prefab não sobreviveria. Rodar uma vez no Awake, depois
                 // do Instantiate, sobrevive — e o guard `awake` garante que é uma vez só.
+                //
+                // Eixo calculado no MUNDO (forward × down), não Euler em X LOCAL: os anchors
+                // Anchor_Light_E/Anchor_Light_W nascem espelhados (Quaternion.LookRotation com
+                // 'inward' oposto — Vector3.right vs Vector3.left), e isso inverte o eixo X local
+                // de um deles em relação ao mundo. Girar por Euler(pitch,0,0) em cima de um X que
+                // pode estar espelhado inclinava o Spot pro chão de um lado e pra parede/teto do
+                // outro — era esse o "foco que se une" em alguns lugares (spot mirando errado
+                // convergindo com o cone do vizinho).
+                //
+                // O sinal do ângulo é verificado e corrigido sozinho (compara o Y do forward antes
+                // e depois) em vez de confiar de cabeça na convenção de sinal do AngleAxis — assim
+                // o resultado é "sempre inclina pra baixo" garantido, não uma aposta de sinal.
                 if (keyPitchDegrees > 0f)
-                    keyLight.transform.localRotation *= Quaternion.Euler(keyPitchDegrees, 0f, 0f);
+                {
+                    Vector3 forward = keyLight.transform.forward;
+                    Vector3 axis = Vector3.Cross(forward, Vector3.down);
+                    if (axis.sqrMagnitude > 0.0001f)
+                    {
+                        axis.Normalize();
+                        Quaternion pitch = Quaternion.AngleAxis(keyPitchDegrees, axis);
+                        if ((pitch * forward).y > forward.y) pitch = Quaternion.AngleAxis(-keyPitchDegrees, axis);
+                        keyLight.transform.rotation = pitch * keyLight.transform.rotation;
+                    }
+                }
             }
 
             if (fillLight != null)

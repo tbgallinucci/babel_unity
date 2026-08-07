@@ -22821,7 +22821,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86a85385eab3f11409a0609521cea90c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: WFC.Runtime::WFC.Runtime.WFCFloorPreview
-  floorSpec: {fileID: 11400000, guid: c7221ea856ee6e2418b119275a9ddf3b, type: 2}
+  floorSpec: {fileID: 11400000, guid: 7530f78f42450584aa791115d607dc54, type: 2}
   instantiatePrefabs: 1
   validateConnectivity: 1
   addCeiling: 1

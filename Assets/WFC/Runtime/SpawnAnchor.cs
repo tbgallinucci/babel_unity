@@ -22,6 +22,12 @@ namespace WFC.Runtime
         WallProp = 3,
         Light = 4,
         PlayerStart = 5,
+
+        /// <summary>Cabe coluna/pilar decorativo aqui — nasce no CENTRO do vértice (Wall_Corner,
+        /// Wall_Cross), não deslocado como WallProp. Kind própria (não reusa WallProp) pra não
+        /// competir pelo mesmo pool de anchors com prop de parede comum (banner, prateleira) —
+        /// ver comentário de cabeçalho do PropRoomPopulator sobre o filtro por anchorKind.</summary>
+        Pillar = 6,
     }
 
     [DisallowMultipleComponent]
@@ -47,6 +53,7 @@ namespace WFC.Runtime
                 SpawnAnchorKind.Chest       => new Color(1f, 0.85f, 0.2f, 0.8f),
                 SpawnAnchorKind.PlayerStart => new Color(0.3f, 1f, 0.4f, 0.8f),
                 SpawnAnchorKind.Light       => new Color(1f, 1f, 0.6f, 0.8f),
+                SpawnAnchorKind.Pillar      => new Color(0.7f, 0.4f, 1f, 0.8f),
                 _                           => new Color(0.5f, 0.7f, 1f, 0.8f),
             };
             Gizmos.DrawWireSphere(transform.position, Mathf.Max(0.1f, clearanceRadius));

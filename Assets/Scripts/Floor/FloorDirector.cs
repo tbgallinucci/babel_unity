@@ -39,6 +39,9 @@ namespace Babel.Floor
         [Tooltip("Opcional. Sem ele, salas de Combate saem sem prop nenhum.")]
         [SerializeField] private PropRoomPopulator propPopulator;
 
+        [Tooltip("Opcional. Sem ele, nenhum SpawnAnchor de decoração pura (pilar, etc.) recebe nada.")]
+        [SerializeField] private DecorationPopulator pillarPopulator;
+
         [Tooltip("Opcional. Limita quantas luzes realtime ficam ligadas ao mesmo tempo.")]
         [SerializeField] private DynamicLightBudget lightBudget;
 
@@ -95,6 +98,7 @@ namespace Babel.Floor
             populator = GetComponent<EnemyPopulator>();
             lightingPopulator = GetComponent<BasicLightingPopulator>();
             propPopulator = GetComponent<PropRoomPopulator>();
+            pillarPopulator = GetComponent<DecorationPopulator>();
             lightBudget = GetComponent<DynamicLightBudget>();
             roomStreamer = GetComponent<RoomStreamer>();
             regionLightMask = GetComponent<RegionLightMask>();
@@ -149,6 +153,7 @@ namespace Babel.Floor
             if (populator != null) populator.Clear();
             if (lightingPopulator != null) lightingPopulator.Clear();
             if (propPopulator != null) propPopulator.Clear();
+            if (pillarPopulator != null) pillarPopulator.Clear();
 
             // Antes de gerar o próximo andar: soltam as referências pro andar velho, que
             // está prestes a ser destruído.
@@ -206,6 +211,11 @@ namespace Babel.Floor
 
             if (propPopulator != null)
                 propPopulator.Populate(floor, archetypeByRoom, propRng, floor.Root);
+
+            // Índice 3: independente do orçamento de prop de sala (Decisão de projeto: pilar é
+            // estrutural, não sabor de sala sorteado — roda no andar inteiro, não só Combate).
+            if (pillarPopulator != null)
+                pillarPopulator.Populate(floor, new XorShiftRandom(WFCSolver.DeriveSeed(floorSeed, 3)), floor.Root);
 
             // Performance e contenção de luz, por último: os três indexam o que JÁ existe em
             // cena, então precisam rodar depois de toda a população (senão tocha/prop plantados
